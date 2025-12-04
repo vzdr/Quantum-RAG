@@ -263,13 +263,15 @@ class Retriever:
             all_metadata: List of all chunk metadata from vector store
 
         Returns:
-            List of indices
+            List of indices (in same order as results)
         """
-        result_ids = set(r.id for r in results)
-        indices = []
+        # Build a map from id to index in all_metadata
+        id_to_index = {meta.get('id'): i for i, meta in enumerate(all_metadata)}
 
-        for i, meta in enumerate(all_metadata):
-            if meta.get('id') in result_ids:
-                indices.append(i)
+        # Return indices in the same order as results (preserves score order)
+        indices = []
+        for r in results:
+            if r.id in id_to_index:
+                indices.append(id_to_index[r.id])
 
         return indices

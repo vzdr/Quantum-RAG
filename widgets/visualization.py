@@ -25,6 +25,7 @@ def create_embedding_visualization(
     method: str = 'UMAP',
     query_embedding: Optional[np.ndarray] = None,
     retrieved_indices: Optional[List[int]] = None,
+    retrieval_scores: Optional[List[float]] = None,
     perplexity: int = 30,
     n_neighbors: int = 15
 ) -> go.Figure:
@@ -37,6 +38,7 @@ def create_embedding_visualization(
         method: Projection method ('UMAP', 't-SNE', 'PCA')
         query_embedding: Optional query embedding to highlight
         retrieved_indices: Optional list of retrieved chunk indices
+        retrieval_scores: Optional list of similarity scores for retrieved chunks
         perplexity: t-SNE perplexity parameter
         n_neighbors: UMAP n_neighbors parameter
 
@@ -68,10 +70,23 @@ def create_embedding_visualization(
         reducer = PCA(n_components=2, random_state=42)
         reduced = reducer.fit_transform(all_embeddings)
 
-    # Separate query point if present
+    # Separate query point if present and compute ALL similarities
+    all_similarities = None
     if query_embedding is not None:
         query_reduced = reduced[-1:]
         reduced = reduced[:-1]
+
+        # Compute cosine similarity between query and ALL embeddings
+        query_norm = query_embedding / np.linalg.norm(query_embedding)
+        embedding_norms = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+        all_similarities = np.dot(embedding_norms, query_norm)
+        # Normalize so max similarity = 1.0 (makes colors more meaningful)
+        max_sim = np.max(all_similarities)
+        min_sim = np.min(all_similarities)
+        if max_sim > min_sim:
+            all_similarities = (all_similarities - min_sim) / (max_sim - min_sim)
+        else:
+            all_similarities = np.ones_like(all_similarities)
 
     # Create DataFrame for plotting
     df = pd.DataFrame({
@@ -82,32 +97,79 @@ def create_embedding_visualization(
         'id': [m.get('id', str(i)) for i, m in enumerate(metadata)]
     })
 
-    # Create scatter plot
-    fig = px.scatter(
-        df, x='x', y='y',
-        color='source',
-        hover_data=['text', 'id'],
-        title=f'Embedding Space Visualization ({method})',
-        template='plotly_white'
-    )
+    # Add similarity scores if available
+    if all_similarities is not None:
+        df['similarity'] = all_similarities
 
-    # Highlight retrieved chunks
+    # Create scatter plot - color by similarity if query provided, else by source
+    if all_similarities is not None:
+        fig = go.Figure()
+
+        # All points colored by similarity
+        fig.add_trace(go.Scatter(
+            x=df['x'],
+            y=df['y'],
+            mode='markers',
+            marker=dict(
+                size=8,
+                color=all_similarities,
+                colorscale='RdYlGn',  # Red (low) -> Yellow -> Green (high)
+                cmin=0,
+                cmax=1,
+                colorbar=dict(title='Similarity', x=1.02)
+            ),
+            text=[f"Score: {s:.3f}<br>Source: {src}<br>{txt}"
+                  for s, src, txt in zip(all_similarities, df['source'], df['text'])],
+            hoverinfo='text',
+            name='All Chunks'
+        ))
+
+        fig.update_layout(
+            title=f'Embedding Space Visualization ({method}) - Colored by Query Similarity',
+            template='plotly_white'
+        )
+    else:
+        fig = px.scatter(
+            df, x='x', y='y',
+            color='source',
+            hover_data=['text', 'id'],
+            title=f'Embedding Space Visualization ({method})',
+            template='plotly_white'
+        )
+
+    # Highlight retrieved chunks with star markers
     if retrieved_indices:
-        retrieved_mask = [i in retrieved_indices for i in range(len(reduced))]
-        retrieved_df = df[retrieved_mask]
+        # Get coordinates for retrieved chunks
+        retrieved_x = [reduced[i, 0] for i in retrieved_indices]
+        retrieved_y = [reduced[i, 1] for i in retrieved_indices]
+
+        # Get scores from all_similarities or provided scores
+        if all_similarities is not None:
+            scores = [all_similarities[i] for i in retrieved_indices]
+        elif retrieval_scores:
+            scores = retrieval_scores
+        else:
+            scores = [0.5] * len(retrieved_indices)
+
+        # Get hover text
+        hover_texts = [f"RETRIEVED #{rank+1}<br>Score: {s:.3f}<br>{metadata[i].get('text', '')[:100]}..."
+                       for rank, (i, s) in enumerate(zip(retrieved_indices, scores))]
 
         fig.add_trace(go.Scatter(
-            x=retrieved_df['x'],
-            y=retrieved_df['y'],
+            x=retrieved_x,
+            y=retrieved_y,
             mode='markers',
             marker=dict(
                 size=18,
                 symbol='star',
-                color='red',
+                color=scores,
+                colorscale='RdYlGn',
+                cmin=0,
+                cmax=1,
                 line=dict(width=2, color='black')
             ),
             name='Retrieved',
-            hovertext=retrieved_df['text'],
+            hovertext=hover_texts,
             hoverinfo='text'
         ))
 
