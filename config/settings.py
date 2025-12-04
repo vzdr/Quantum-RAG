@@ -44,7 +44,7 @@ class RAGConfig:
     similarity_threshold: float = 0.0
 
     # Generation parameters
-    llm_model: str = "gemini-2.0-flash-lite"
+    llm_model: str = "gemini-2.5-flash-lite"
     temperature: float = 0.7
     max_tokens: int = 1024
 

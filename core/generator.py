@@ -52,10 +52,10 @@ class ResponseGenerator:
     """
 
     AVAILABLE_MODELS = {
-        'gemini-2.0-flash-lite': {
+        'gemini-2.5-flash-lite': {
             'description': 'Fast, efficient model (recommended)',
         },
-        'gemini-2.0-flash': {
+        'gemini-2.5-flash': {
             'description': 'Balanced speed and quality',
         },
         'gemini-1.5-flash': {
@@ -77,7 +77,7 @@ Instructions:
 
     def __init__(
         self,
-        model: str = "gemini-2.0-flash-lite",
+        model: str = "gemini-2.5-flash-lite",
         temperature: float = 0.7,
         max_tokens: int = 1024,
         api_key: Optional[str] = None

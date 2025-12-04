@@ -83,12 +83,12 @@ class QueryWidget:
         # LLM controls
         self.model_dropdown = widgets.Dropdown(
             options=[
-                ('Gemini 2.0 Flash Lite', 'gemini-2.0-flash-lite'),
-                ('Gemini 2.0 Flash', 'gemini-2.0-flash'),
+                ('Gemini 2.5 Flash Lite', 'gemini-2.5-flash-lite'),
+                ('Gemini 2.5 Flash', 'gemini-2.5-flash'),
                 ('Gemini 1.5 Flash', 'gemini-1.5-flash'),
                 ('Gemini 1.5 Pro', 'gemini-1.5-pro'),
             ],
-            value='gemini-2.0-flash-lite',
+            value='gemini-2.5-flash-lite',
             description='LLM Model:',
             style={'description_width': '80px'}
         )

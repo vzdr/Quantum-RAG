@@ -72,12 +72,13 @@ class VectorStore:
         """Get the number of items in the collection."""
         return self.collection.count()
 
-    def add(self, embedded_chunks: List[EmbeddedChunk]) -> int:
+    def add(self, embedded_chunks: List[EmbeddedChunk], batch_size: int = 500) -> int:
         """
         Add embedded chunks to the vector store.
 
         Args:
             embedded_chunks: List of EmbeddedChunk objects
+            batch_size: Number of chunks to add per batch (default 500)
 
         Returns:
             Number of chunks added
@@ -85,37 +86,45 @@ class VectorStore:
         if not embedded_chunks:
             return 0
 
-        ids = []
-        embeddings = []
-        documents = []
-        metadatas = []
+        total_added = 0
 
-        for ec in embedded_chunks:
-            chunk_id = ec.chunk.id
+        # Process in batches to avoid ChromaDB limits
+        for i in range(0, len(embedded_chunks), batch_size):
+            batch = embedded_chunks[i:i + batch_size]
 
-            ids.append(chunk_id)
-            embeddings.append(ec.embedding.tolist())
-            documents.append(ec.chunk.text)
-            metadatas.append({
-                "source": ec.chunk.source,
-                "chunk_index": ec.chunk.chunk_index,
-                "start_char": ec.chunk.start_char,
-                "end_char": ec.chunk.end_char,
-                **{k: str(v) for k, v in ec.chunk.metadata.items()}
-            })
+            ids = []
+            embeddings = []
+            documents = []
+            metadatas = []
 
-            # Store reference
-            self._chunks_map[chunk_id] = ec.chunk
+            for ec in batch:
+                chunk_id = ec.chunk.id
 
-        # Add to ChromaDB
-        self.collection.add(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
-        )
+                ids.append(chunk_id)
+                embeddings.append(ec.embedding.tolist())
+                documents.append(ec.chunk.text)
+                metadatas.append({
+                    "source": ec.chunk.source,
+                    "chunk_index": ec.chunk.chunk_index,
+                    "start_char": ec.chunk.start_char,
+                    "end_char": ec.chunk.end_char,
+                    **{k: str(v) for k, v in ec.chunk.metadata.items()}
+                })
 
-        return len(ids)
+                # Store reference
+                self._chunks_map[chunk_id] = ec.chunk
+
+            # Add batch to ChromaDB
+            self.collection.add(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=metadatas
+            )
+
+            total_added += len(ids)
+
+        return total_added
 
     def search(
         self,
