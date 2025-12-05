@@ -66,14 +66,9 @@ class ResponseGenerator:
         },
     }
 
-    DEFAULT_SYSTEM_PROMPT = """You are a helpful assistant that answers questions based on the provided context.
-
-Instructions:
-1. Answer the question using ONLY the information from the provided context.
-2. If the answer cannot be found in the context, say "I cannot find this information in the provided documents."
-3. Be concise and accurate.
-4. When relevant, cite the source document.
-5. Do not make up information that is not in the context."""
+    DEFAULT_SYSTEM_PROMPT = """
+    Answer the question using only the information from the provided context. If the answer cannot be found in the context, respond "I cannot find this information in the provided documents."
+    """
 
     def __init__(
         self,
