@@ -4,7 +4,7 @@ Retriever Module - Phase B, Steps 5-7
 Handles:
 - Query embedding (Step 5)
 - Similarity search (Step 6)
-- Top-K selection (Step 7)
+- Top-K selection (Step 7) with configurable retrieval strategies
 """
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
@@ -13,6 +13,11 @@ import numpy as np
 from .chunker import Chunk
 from .embedder import EmbeddingGenerator
 from .vector_store import VectorStore
+from .retrieval_strategies import (
+    AbstractRetrievalStrategy,
+    create_retrieval_strategy,
+    RetrievalResult as StrategyRetrievalResult
+)
 
 
 @dataclass
@@ -62,7 +67,10 @@ class Retriever:
     def __init__(
         self,
         embedder: EmbeddingGenerator,
-        vector_store: VectorStore
+        vector_store: VectorStore,
+        retrieval_strategy: Optional[AbstractRetrievalStrategy] = None,
+        retrieval_method: str = 'naive',
+        strategy_params: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize the retriever.
@@ -70,15 +78,31 @@ class Retriever:
         Args:
             embedder: EmbeddingGenerator for query embedding
             vector_store: VectorStore for similarity search
+            retrieval_strategy: Pre-configured strategy (optional)
+            retrieval_method: Strategy name if creating new ('naive', 'mmr', 'qubo')
+            strategy_params: Parameters for strategy creation
         """
         self.embedder = embedder
         self.vector_store = vector_store
         self._last_query_embedding: Optional[np.ndarray] = None
+        self._last_retrieval_metadata: Optional[Dict[str, Any]] = None
+
+        # Initialize strategy
+        if retrieval_strategy is not None:
+            self.strategy = retrieval_strategy
+        else:
+            params = strategy_params or {}
+            self.strategy = create_retrieval_strategy(retrieval_method, **params)
 
     @property
     def last_query_embedding(self) -> Optional[np.ndarray]:
         """Get the last query embedding for visualization."""
         return self._last_query_embedding
+
+    @property
+    def last_retrieval_metadata(self) -> Optional[Dict[str, Any]]:
+        """Get metadata from last retrieval."""
+        return self._last_retrieval_metadata
 
     def embed_query(self, query: str) -> np.ndarray:
         """
@@ -161,7 +185,7 @@ class Retriever:
         threshold: float = 0.0
     ) -> List[RetrievalResult]:
         """
-        Complete retrieval pipeline: embed query -> search -> select top-k.
+        Complete retrieval pipeline: embed query -> search -> strategy selection.
 
         Args:
             query: Query text
@@ -174,11 +198,40 @@ class Retriever:
         # Step 5: Embed query
         query_embedding = self.embed_query(query)
 
-        # Step 6: Similarity search (get more than k for threshold filtering)
-        search_results = self.similarity_search(query_embedding, k=k * 2)
+        # Step 6: Similarity search (get more candidates for diversity strategies)
+        search_factor = 3 if self.strategy.get_name() in ['mmr', 'qubo'] else 2
+        search_results = self.similarity_search(query_embedding, k=k * search_factor)
 
-        # Step 7: Select top-k with threshold
-        return self.select_top_k(search_results, k=k, threshold=threshold)
+        # Step 7: Apply retrieval strategy
+        results, metadata = self.strategy.retrieve(
+            query_embedding=query_embedding,
+            candidate_results=search_results,
+            k=k,
+            threshold=threshold
+        )
+
+        # Store metadata
+        self._last_retrieval_metadata = metadata
+
+        # Convert strategy results to retriever results
+        return self._convert_strategy_results(results)
+
+    def _convert_strategy_results(self, strategy_results: List[StrategyRetrievalResult]) -> List[RetrievalResult]:
+        """Convert strategy results to retriever results."""
+        return [
+            RetrievalResult(chunk=r.chunk, score=r.score, rank=r.rank)
+            for r in strategy_results
+        ]
+
+    def set_strategy(self, method: str, **params):
+        """
+        Change retrieval strategy dynamically.
+
+        Args:
+            method: Strategy name ('naive', 'mmr', 'qubo')
+            **params: Strategy-specific parameters
+        """
+        self.strategy = create_retrieval_strategy(method, **params)
 
     def get_retrieval_statistics(
         self,
