@@ -9,6 +9,12 @@ import time
 from pathlib import Path
 from typing import List
 from tqdm import tqdm
+import sys
+
+# Add project root to Python path
+script_dir = Path(__file__).parent.resolve()
+project_root = script_dir.parent
+sys.path.insert(0, str(project_root))
 
 from core.wikipedia.fetcher import WikipediaFetcher, WikiArticle
 from core.wikipedia.chunk_creator import ChunkCreator, Chunk
@@ -204,7 +210,7 @@ def main():
     parser.add_argument(
         '--article-list',
         type=str,
-        default='./data/wikipedia/wiki_articles.txt',
+        default=str(project_root / 'data' / 'wikipedia' / 'wiki_articles.txt'),
         help='Path to article list file'
     )
 
@@ -240,11 +246,18 @@ def main():
     print("=" * 70)
 
     # Initialize components
-    checkpoint_manager = CheckpointManager(checkpoint_dir='./data/wikipedia/checkpoints')
-    fetcher = WikipediaFetcher(cache_dir='./data/wikipedia/cache')
+    checkpoint_manager = CheckpointManager(
+        checkpoint_dir=str(project_root / 'data' / 'wikipedia' / 'checkpoints')
+    )
+    fetcher = WikipediaFetcher(
+        cache_dir=str(project_root / 'data' / 'wikipedia' / 'cache')
+    )
     chunk_creator = ChunkCreator(max_redundancy=max_redundancy)
     embedding_generator = EmbeddingGenerator()
-    vector_store = VectorStore(collection_name='wiki_aspects', persist_directory='./data/wikipedia/db')
+    vector_store = VectorStore(
+        collection_name='wiki_aspects',
+        persist_directory=str(project_root / 'data' / 'wikipedia' / 'chroma_db')
+    )
 
     # Clear checkpoints if requested
     if args.clear_checkpoints:

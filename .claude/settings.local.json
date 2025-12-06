@@ -17,7 +17,10 @@
       "Bash(\".venv/Scripts/python.exe\" -m pip uninstall numpy -y)",
       "Bash(\".venv/Scripts/pip.exe\" uninstall numpy -y)",
       "Bash(where:*)",
-      "Bash(C:/Python314/Scripts/pip.exe install:*)"
+      "Bash(C:/Python314/Scripts/pip.exe install:*)",
+      "Bash(cat:*)",
+      "Bash(sqlite3:*)",
+      "Bash(timeout 5 echo:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,49 @@
+{
+  "alpha": 0.05,
+  "k": 5,
+  "max_prompts_per_level": 5,
+  "levels": {
+    "0": {
+      "correlation": -0.9059375784209149,
+      "p_value": 0.0,
+      "n_data_points": 250000,
+      "n_prompts": 5,
+      "success": true
+    },
+    "1": {
+      "correlation": -0.9105286972667873,
+      "p_value": 0.0,
+      "n_data_points": 250000,
+      "n_prompts": 5,
+      "success": true
+    },
+    "2": {
+      "correlation": -0.911039528513169,
+      "p_value": 0.0,
+      "n_data_points": 250000,
+      "n_prompts": 5,
+      "success": true
+    },
+    "3": {
+      "correlation": -0.8834405666654389,
+      "p_value": 0.0,
+      "n_data_points": 250000,
+      "n_prompts": 5,
+      "success": true
+    },
+    "4": {
+      "correlation": -0.8545427872306066,
+      "p_value": 0.0,
+      "n_data_points": 250000,
+      "n_prompts": 5,
+      "success": true
+    },
+    "5": {
+      "correlation": -0.8271826083642536,
+      "p_value": 0.0,
+      "n_data_points": 250000,
+      "n_prompts": 5,
+      "success": true
+    }
+  }
+}
