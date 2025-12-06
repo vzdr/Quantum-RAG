@@ -67,6 +67,10 @@ class EmbeddingGenerator:
             'dimensions': 384,
             'description': 'Multilingual support (384d)',
         },
+        'BAAI/bge-large-en-v1.5': {
+            'dimensions': 1024,
+            'description': 'High-quality embeddings for retrieval (1024d)',
+        },
     }
 
     def __init__(

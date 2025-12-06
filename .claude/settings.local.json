@@ -6,7 +6,18 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(python:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(wc:*)",
+      "Bash(pip install:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(.venvScriptspython.exe -m pip uninstall numpy -y)",
+      "Bash(\".venv/Scripts/python.exe\" -m pip uninstall numpy -y)",
+      "Bash(\".venv/Scripts/pip.exe\" uninstall numpy -y)",
+      "Bash(where:*)",
+      "Bash(C:/Python314/Scripts/pip.exe install:*)"
     ],
     "deny": [],
     "ask": []

@@ -9,6 +9,7 @@ class RAGConfig:
     Global configuration for the RAG system.
 
     Attributes:
+        dataset_type: Type of dataset ('medical' or 'wikipedia')
         chunk_size: Number of characters per chunk (100-2000)
         chunk_overlap: Number of overlapping characters between chunks (0-200)
         chunking_strategy: Strategy for chunking ('fixed', 'sentence', 'paragraph')
@@ -24,6 +25,9 @@ class RAGConfig:
         max_tokens: Maximum tokens in LLM response
         system_prompt: System prompt for the LLM
     """
+
+    # Dataset configuration
+    dataset_type: str = "medical"  # medical or wikipedia
 
     # Chunking parameters
     chunk_size: int = 500
@@ -56,6 +60,7 @@ Always be accurate and cite the relevant parts of the context in your answer."""
     def to_dict(self) -> dict:
         """Convert config to dictionary."""
         return {
+            'dataset_type': self.dataset_type,
             'chunk_size': self.chunk_size,
             'chunk_overlap': self.chunk_overlap,
             'chunking_strategy': self.chunking_strategy,

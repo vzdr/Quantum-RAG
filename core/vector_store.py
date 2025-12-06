@@ -314,3 +314,81 @@ class VectorStore:
                 results['metadatas']
             )
         ]
+
+    def get_by_metadata(self, where: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Get all chunks matching metadata criteria.
+
+        Args:
+            where: ChromaDB where filter dictionary
+
+        Returns:
+            List of chunk data with id, text, metadata
+        """
+        results = self.collection.get(
+            where=where,
+            include=["documents", "metadatas", "embeddings"]
+        )
+
+        return [
+            {
+                'id': id_,
+                'text': doc,
+                'metadata': meta,
+                'embedding': emb
+            }
+            for id_, doc, meta, emb in zip(
+                results['ids'],
+                results['documents'],
+                results['metadatas'],
+                results.get('embeddings', [None] * len(results['ids']))
+            )
+        ]
+
+    def search_with_filters(
+        self,
+        query_embedding: np.ndarray,
+        k: int = 5,
+        metadata_filter: Optional[Dict] = None,
+        exclude_metadata: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Advanced search with inclusion and exclusion filters.
+
+        Args:
+            query_embedding: Query embedding vector
+            k: Number of results to return
+            metadata_filter: Metadata criteria to include (AND)
+            exclude_metadata: Metadata criteria to exclude (NOT)
+
+        Returns:
+            List of search results
+
+        Example:
+            # Get top-5 from aspect_id 0-2, excluding noise
+            results = store.search_with_filters(
+                query_emb,
+                k=5,
+                metadata_filter={"aspect_id": {"$lte": "2"}},
+                exclude_metadata={"chunk_type": "noise"}
+            )
+        """
+        where_clause = {}
+
+        if metadata_filter and exclude_metadata:
+            where_clause = {
+                "$and": [
+                    metadata_filter,
+                    {"$not": exclude_metadata}
+                ]
+            }
+        elif metadata_filter:
+            where_clause = metadata_filter
+        elif exclude_metadata:
+            where_clause = {"$not": exclude_metadata}
+
+        return self.search(
+            query_embedding=query_embedding,
+            k=k,
+            where=where_clause if where_clause else None
+        )

@@ -1,0 +1,676 @@
+# Curated Wikipedia Articles for Dataset Generation
+# High-quality articles with rich section structure across diverse topics
+
+# History & Ancient Civilizations
+Roman Empire
+Ancient Egypt
+Byzantine Empire
+Ottoman Empire
+Mongol Empire
+British Empire
+French Revolution
+American Revolution
+World War I
+World War II
+Cold War
+Renaissance
+Industrial Revolution
+Age of Enlightenment
+Middle Ages
+Ancient Greece
+Persian Empire
+Chinese dynasties
+Mayan civilization
+Inca Empire
+Vikings
+Crusades
+Silk Road
+Colonial America
+American Civil War
+Russian Revolution
+Spanish Empire
+Japanese Empire
+Qing dynasty
+Ming dynasty
+
+# Political Science & Government
+Democracy
+Communism
+Capitalism
+Socialism
+Fascism
+Monarchy
+Republic
+Federalism
+Totalitarianism
+Authoritarianism
+Anarchism
+Liberalism
+Conservatism
+Nationalism
+Imperialism
+Political philosophy
+Constitutional law
+International relations
+United Nations
+European Union
+NATO
+World Bank
+International Monetary Fund
+Human rights
+Civil rights movement
+Women's suffrage
+Voting rights
+Political party
+Election
+Parliament
+
+# Economics & Business
+Supply and demand
+Market economy
+Macroeconomics
+Microeconomics
+Inflation
+Recession
+Great Depression
+2008 financial crisis
+Stock market
+Cryptocurrency
+Bitcoin
+Blockchain
+Central bank
+Monetary policy
+Fiscal policy
+International trade
+Globalization
+Free trade
+Protectionism
+Labor economics
+Unemployment
+Poverty
+Income inequality
+Economic growth
+Gross domestic product
+Industrial Revolution
+Corporation
+Entrepreneurship
+Investment
+Banking
+
+# Science & Physics
+Theory of relativity
+Quantum mechanics
+Thermodynamics
+Electromagnetism
+Newton's laws of motion
+Gravity
+String theory
+Big Bang
+Black hole
+Dark matter
+Dark energy
+Particle physics
+Nuclear physics
+Atomic theory
+Periodic table
+Chemical reaction
+DNA
+Evolution
+Natural selection
+Cell biology
+Genetics
+Neuroscience
+Photosynthesis
+Ecology
+Climate science
+Plate tectonics
+Astronomy
+Solar System
+Galaxy
+Universe
+
+# Technology & Computing
+Artificial intelligence
+Machine learning
+Deep learning
+Neural network
+Computer science
+Algorithm
+Data structure
+Operating system
+Computer network
+Internet
+World Wide Web
+Cloud computing
+Cybersecurity
+Encryption
+Quantum computing
+Semiconductor
+Transistor
+Integrated circuit
+Computer programming
+Software engineering
+Database
+Computer graphics
+Virtual reality
+Augmented reality
+Robotics
+Automation
+Internet of things
+3D printing
+Nanotechnology
+Biotechnology
+
+# Medicine & Health
+Human body
+Immune system
+Nervous system
+Cardiovascular system
+Respiratory system
+Digestive system
+Endocrine system
+Disease
+Cancer
+Heart disease
+Diabetes
+Alzheimer's disease
+Parkinson's disease
+Mental health
+Depression
+Anxiety
+Schizophrenia
+Vaccine
+Antibiotic
+Surgery
+Medical imaging
+Pharmacology
+Public health
+Epidemiology
+Pandemic
+COVID-19
+Nutrition
+Exercise physiology
+Sleep
+Aging
+
+# Environmental Science
+Climate change
+Global warming
+Greenhouse effect
+Carbon dioxide
+Renewable energy
+Solar energy
+Wind power
+Nuclear energy
+Fossil fuel
+Deforestation
+Biodiversity
+Extinction
+Conservation biology
+Endangered species
+Ecosystem
+Ocean acidification
+Air pollution
+Water pollution
+Ozone depletion
+Sustainable development
+Recycling
+Environmental protection
+Natural resource
+Agriculture
+Water resources
+Soil science
+Meteorology
+Weather
+Atmosphere of Earth
+Hydrosphere
+
+# Philosophy & Religion
+Western philosophy
+Eastern philosophy
+Ethics
+Metaphysics
+Epistemology
+Logic
+Philosophy of mind
+Philosophy of science
+Existentialism
+Utilitarianism
+Deontology
+Virtue ethics
+Christianity
+Islam
+Buddhism
+Hinduism
+Judaism
+Atheism
+Agnosticism
+Theology
+Religious studies
+Comparative religion
+Mythology
+Ancient Egyptian religion
+Greek mythology
+Norse mythology
+Religious texts
+Bible
+Quran
+Vedas
+
+# Arts & Culture
+Renaissance art
+Baroque art
+Impressionism
+Modernism
+Postmodernism
+Classical music
+Jazz
+Rock music
+Hip hop music
+Opera
+Symphony
+Literature
+Novel
+Poetry
+Drama
+Romanticism
+Realism
+Surrealism
+Architecture
+Gothic architecture
+Baroque architecture
+Modern architecture
+Sculpture
+Painting
+Photography
+Film
+Cinema
+Theater
+Dance
+Ballet
+Contemporary art
+
+# Social Sciences
+Sociology
+Psychology
+Anthropology
+Archaeology
+Cultural anthropology
+Social psychology
+Cognitive psychology
+Behavioral psychology
+Developmental psychology
+Social structure
+Social class
+Social mobility
+Urbanization
+Demography
+Population growth
+Migration
+Ethnicity
+Race
+Gender studies
+Feminism
+Family
+Marriage
+Education
+Literacy
+Social change
+Globalization
+Cultural identity
+Multiculturalism
+Social inequality
+Discrimination
+
+# Geography & Earth Science
+Continent
+Ocean
+Mountain
+River
+Lake
+Desert
+Forest
+Tundra
+Grassland
+Climate
+Biome
+Geology
+Rock cycle
+Mineral
+Sedimentary rock
+Igneous rock
+Metamorphic rock
+Volcano
+Earthquake
+Tsunami
+Erosion
+Weathering
+Soil formation
+Glacier
+Ice age
+Hydrology
+Groundwater
+Watershed
+Cartography
+Geographic information system
+
+# Language & Linguistics
+Language
+Grammar
+Syntax
+Semantics
+Phonetics
+Phonology
+Morphology
+Etymology
+Historical linguistics
+Sociolinguistics
+Psycholinguistics
+Language acquisition
+Bilingualism
+Translation
+Writing system
+Alphabet
+Linguistic typology
+Indo-European languages
+Romance languages
+Germanic languages
+Slavic languages
+Chinese language
+Arabic language
+Sanskrit
+Latin
+Ancient Greek language
+Linguistics
+Applied linguistics
+Computational linguistics
+
+# Mathematics
+Algebra
+Calculus
+Geometry
+Trigonometry
+Number theory
+Set theory
+Probability
+Statistics
+Mathematical logic
+Topology
+Differential equation
+Linear algebra
+Complex number
+Prime number
+Theorem
+Mathematical proof
+Game theory
+Chaos theory
+Fractals
+Combinatorics
+Graph theory
+Cryptography
+Discrete mathematics
+Mathematical analysis
+Numerical analysis
+Optimization
+Abstract algebra
+Group theory
+Ring theory
+Field theory
+
+# Transportation & Infrastructure
+Automobile
+Aircraft
+Railway
+Ship
+Bicycle
+Public transport
+Highway
+Bridge
+Tunnel
+Airport
+Seaport
+Transportation engineering
+Urban planning
+Civil engineering
+Infrastructure
+Road
+Rail transport
+Aviation
+Maritime transport
+Logistics
+Supply chain
+Electric vehicle
+Autonomous vehicle
+High-speed rail
+Aerospace engineering
+Naval architecture
+Traffic engineering
+Mass transit
+Sustainable transport
+Transportation economics
+Transportation geography
+
+# Energy & Resources
+Energy
+Electricity
+Power station
+Electric power transmission
+Energy storage
+Battery
+Fuel cell
+Hydrogen economy
+Oil refining
+Natural gas
+Coal mining
+Hydroelectricity
+Geothermal energy
+Tidal power
+Biofuel
+Energy conservation
+Energy efficiency
+Peak oil
+Energy crisis
+Power grid
+Smart grid
+Energy economics
+Energy policy
+Electrification
+Electrical engineering
+Power electronics
+Renewable energy technology
+Energy security
+Carbon neutrality
+Net zero emissions
+
+# Law & Justice
+Law
+Legal system
+Common law
+Civil law
+Criminal law
+Constitutional law
+International law
+Contract law
+Property law
+Tort law
+Family law
+Labor law
+Environmental law
+Human rights law
+Justice
+Court
+Judge
+Jury
+Lawyer
+Legal profession
+Legal education
+Jurisprudence
+Rule of law
+Due process
+Civil liberties
+Legal precedent
+Statute
+Legislation
+Regulation
+Legal remedy
+
+# Military & Defense
+Military
+Army
+Navy
+Air force
+Marines
+Military strategy
+Warfare
+Battle
+Siege
+Guerrilla warfare
+Unconventional warfare
+Military tactics
+Military technology
+Weapon
+Firearm
+Artillery
+Tank
+Aircraft carrier
+Submarine
+Fighter aircraft
+Bomber
+Military organization
+Military rank
+Military history
+Arms race
+Nuclear weapon
+Chemical weapon
+Biological weapon
+Military doctrine
+National security
+Defense policy
+
+# Sports & Recreation
+Association football
+Basketball
+Baseball
+American football
+Cricket
+Tennis
+Golf
+Athletics
+Swimming
+Boxing
+Martial arts
+Wrestling
+Gymnastics
+Cycling
+Motorsport
+Olympic Games
+World Cup
+Championship
+Tournament
+Sports science
+Exercise physiology
+Sports medicine
+Coaching
+Athletic training
+Sports psychology
+Sports equipment
+Stadium
+Sports broadcasting
+E-sports
+Outdoor recreation
+
+# Media & Communication
+Mass media
+Journalism
+News media
+Broadcasting
+Radio
+Television
+Newspaper
+Magazine
+Publishing
+Advertising
+Public relations
+Social media
+Internet culture
+Digital media
+Multimedia
+Communication studies
+Communication theory
+Media studies
+Media literacy
+Freedom of the press
+Censorship
+Propaganda
+Media bias
+News agency
+Press conference
+Editorial
+Opinion journalism
+Investigative journalism
+Photojournalism
+Broadcast journalism
+
+# Agriculture & Food
+Agriculture
+Farming
+Crop
+Livestock
+Animal husbandry
+Agricultural science
+Agronomy
+Horticulture
+Forestry
+Aquaculture
+Irrigation
+Soil science
+Plant breeding
+Genetic modification
+Organic farming
+Sustainable agriculture
+Agricultural economics
+Food security
+Food industry
+Food processing
+Nutrition
+Diet
+Cuisine
+Culinary art
+Food preservation
+Food safety
+Agricultural policy
+Rural development
+Agroecology
+Permaculture
+
+# Space & Astronomy
+Space exploration
+Spacecraft
+Satellite
+Space station
+Astronaut
+Rocket
+Space Shuttle
+International Space Station
+Moon landing
+Mars exploration
+Exoplanet
+Cosmology
+Astrophysics
+Observable universe
+Galaxy formation
+Stellar evolution
+Supernova
+Neutron star
+Pulsar
+Quasar
+Cosmic microwave background
+Redshift
+Hubble's law
+Astrobiology
+Search for extraterrestrial intelligence
+Space telescope
+Radio astronomy
+X-ray astronomy
+Gamma-ray astronomy
+Gravitational wave
