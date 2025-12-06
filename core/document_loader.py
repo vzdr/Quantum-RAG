@@ -100,16 +100,26 @@ class DocumentLoader:
         with open(file_path, 'r', encoding=encoding, errors='replace') as f:
             text = f.read()
 
+        # Extract disease name from filename (e.g., "lupus_symptoms_1.txt" → "lupus")
+        filename = Path(file_path).name
+        disease = filename.split('_')[0] if '_' in filename else None
+
+        metadata = {
+            "encoding": encoding,
+            "file_path": str(file_path),
+            "char_count": len(text),
+            "line_count": text.count('\n') + 1,
+        }
+
+        # Add disease metadata if detected
+        if disease:
+            metadata["disease"] = disease
+
         return Document(
             content=text,
             source=Path(file_path).name,
             file_type="txt",
-            metadata={
-                "encoding": encoding,
-                "file_path": str(file_path),
-                "char_count": len(text),
-                "line_count": text.count('\n') + 1,
-            }
+            metadata=metadata
         )
 
     @staticmethod
