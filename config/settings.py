@@ -1,4 +1,5 @@
 """RAG System Configuration."""
+import torch
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -37,11 +38,11 @@ class RAGConfig:
     # Embedding parameters
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_batch_size: int = 32
-    embedding_device: str = "cpu"
+    embedding_device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Vector store parameters
     collection_name: str = "rag_collection"
-    persist_directory: str = "./chroma_db"
+    persist_directory: str = "./data/vector_dbs"
 
     # Retrieval parameters
     top_k: int = 5

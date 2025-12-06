@@ -30,7 +30,7 @@ class VectorStore:
     def __init__(
         self,
         collection_name: str = "rag_collection",
-        persist_directory: str = "./chroma_db",
+        persist_directory: str = "./data/vector_dbs",
         reset: bool = False
     ):
         """

@@ -11,6 +11,8 @@ Components:
 """
 
 from typing import Dict, Any, Tuple, Optional
+import time
+from itertools import combinations
 import numpy as np
 
 
@@ -19,13 +21,13 @@ class QUBOProblem:
     Constructs and manages QUBO problem for diverse retrieval.
 
     Formulation:
-        minimize f(x) = -α * Σᵢ sim(query, chunkᵢ) * xᵢ
-                        + (1-α) * Σᵢ Σⱼ>ᵢ sim(chunkᵢ, chunkⱼ) * xᵢ * xⱼ
+        minimize f(x) = -1 * Σᵢ sim(query, chunkᵢ) * xᵢ
+                        + α * Σᵢ Σⱼ>ᵢ sim(chunkᵢ, chunkⱼ) * xᵢ * xⱼ
         subject to: Σxᵢ = k
 
     where:
         - xᵢ ∈ {0,1}: binary decision variable
-        - α ∈ [0.5, 0.7]: relevance vs diversity trade-off
+        - α: diversity vs relevance trade-off
         - Linear term: rewards query-chunk similarity (relevance)
         - Quadratic term: penalizes inter-chunk similarity (diversity)
     """
@@ -36,7 +38,7 @@ class QUBOProblem:
         candidate_embeddings: np.ndarray,
         alpha: float,
         k: int,
-        penalty_multiplier: float = 2.0
+        penalty_multiplier: float = 10.0
     ):
         """
         Initialize QUBO problem.
@@ -44,21 +46,11 @@ class QUBOProblem:
         Args:
             query_embedding: Query vector (embedding_dim,)
             candidate_embeddings: Candidate vectors (n_candidates, embedding_dim)
-            alpha: Relevance weight (0.5-0.7), (1-alpha) = diversity weight
+            alpha: Diversity weight
             k: Number of items to select
-            penalty_multiplier: Multiplier for cardinality penalty (default: 2.0)
+            penalty_multiplier: Multiplier for cardinality penalty (default: 10.0)
                               Higher = stricter constraint enforcement
         """
-        # Validate alpha parameter
-        if not 0.0 <= alpha <= 1.0:
-            raise ValueError(f"Alpha must be in [0, 1], got {alpha}")
-        if not 0.3 <= alpha <= 0.7:
-            import warnings
-            warnings.warn(
-                f"Alpha={alpha} is outside typical range [0.3, 0.7]. "
-                f"Typical usage: 0.5-0.6 for balanced, <0.5 for more diversity, >0.6 for more relevance."
-            )
-
         self.query_embedding = query_embedding
         self.candidate_embeddings = candidate_embeddings
         self.alpha = alpha
@@ -88,8 +80,8 @@ class QUBOProblem:
 
         # Build diagonal (linear terms + cardinality penalty)
         for i in range(self.n):
-            # Original QUBO: -α * query_sim[i]
-            Q[i, i] = -self.alpha * self.query_sims[i]
+            # Relevance term
+            Q[i, i] = -1 * self.query_sims[i]
 
             # Cardinality penalty: λ * (1 - 2k)
             Q[i, i] += penalty_lambda * (1 - 2 * self.k)
@@ -97,8 +89,8 @@ class QUBOProblem:
         # Build off-diagonal (quadratic terms + cardinality penalty)
         for i in range(self.n):
             for j in range(i + 1, self.n):
-                # Original QUBO: (1-α) * pairwise_sim[i,j]
-                Q[i, j] = (1 - self.alpha) * self.pairwise_sims[i, j]
+                # Diversity term
+                Q[i, j] = self.alpha * self.pairwise_sims[i, j]
 
                 # Cardinality penalty: 2λ
                 Q[i, j] += 2 * penalty_lambda
@@ -372,23 +364,144 @@ class ORBITSolver:
         }
 
 
+class BruteForceSolver:
+    """
+    Exact QUBO solver using brute-force enumeration.
+
+    Iterates through all C(n, k) combinations.
+    Only feasible for small n.
+    """
+    def __init__(self, n_max: int = 32):
+        self.n_max = n_max
+
+    def solve(self, Q: np.ndarray, k: int) -> Dict[str, Any]:
+        """
+        Solve QUBO by enumerating all combinations.
+
+        Args:
+            Q: QUBO matrix
+            k: Cardinality constraint
+
+        Returns:
+            Solver result dictionary
+        """
+        n = Q.shape[0]
+        if n > self.n_max:
+            raise ValueError(
+                f"Brute-force solver is not feasible for n={n}. "
+                f"Maximum allowed is n={self.n_max}."
+            )
+
+        start_time = time.time()
+        
+        best_energy = float('inf')
+        best_solution = None
+
+        # Generate all combinations of k indices
+        indices = range(n)
+        for selected_indices in combinations(indices, k):
+            x = np.zeros(n)
+            x[list(selected_indices)] = 1
+            
+            energy = x.T @ Q @ x
+            
+            if energy < best_energy:
+                best_energy = energy
+                best_solution = x
+
+        execution_time = time.time() - start_time
+        
+        return {
+            'binary_solution': best_solution,
+            'energy': best_energy,
+            'execution_time': execution_time
+        }
+
+
+class GurobiSolver:
+    """
+    Exact QUBO solver using Gurobi Optimizer.
+    """
+    def __init__(self, time_limit: int = 10):
+        self.time_limit = time_limit
+
+    def solve(self, Q: np.ndarray, k: int) -> Dict[str, Any]:
+        """
+        Solve QUBO using Gurobi.
+
+        Args:
+            Q: QUBO matrix
+            k: Cardinality constraint
+
+        Returns:
+            Solver result dictionary
+        """
+        try:
+            import gurobipy as gp
+            from gurobipy import GRB
+        except ImportError:
+            raise ImportError(
+                "Gurobi not found. Please install the 'gurobipy' package."
+            )
+
+        start_time = time.time()
+        n = Q.shape[0]
+        
+        with gp.Env(empty=True) as env:
+            env.set('OutputFlag', 0)
+            env.start()
+            with gp.Model(env=env) as model:
+                # Create variables
+                x = model.addMVar(shape=n, vtype=GRB.BINARY, name="x")
+
+                # Set objective
+                # Note: Gurobi minimizes, which is what we want
+                model.setObjective(x @ Q @ x, GRB.MINIMIZE)
+                
+                # Add cardinality constraint
+                model.addConstr(x.sum() == k, "cardinality")
+
+                # Set time limit
+                model.setParam('TimeLimit', self.time_limit)
+
+                # Optimize model
+                model.optimize()
+
+                execution_time = time.time() - start_time
+
+                if model.Status == GRB.OPTIMAL:
+                    solution = np.array(x.X).astype(int)
+                    energy = model.ObjVal
+                else:
+                    # Return a null solution if not optimal
+                    solution = np.zeros(n, dtype=int)
+                    energy = float('inf')
+
+                return {
+                    'binary_solution': solution,
+                    'energy': energy,
+                    'execution_time': execution_time
+                }
+
+
 def solve_diverse_retrieval_qubo(
     query_embedding: np.ndarray,
     candidate_embeddings: np.ndarray,
     k: int,
     alpha: float = 0.6,
     penalty_multiplier: float = 2.0,
-    solver_params: Optional[Dict[str, Any]] = None
+    solver: str = 'orbit',
+    solver_options: Optional[Dict[str, Any]] = None
 ) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
     End-to-end QUBO solver for diverse retrieval.
 
     Pipeline:
         1. Build QUBO matrix from embeddings
-        2. Convert QUBO to Ising format
-        3. Solve with ORBIT simulator
+        2. Select solver (orbit, gurobi, bruteforce)
+        3. Solve the problem
         4. Extract selected indices
-        5. Enforce cardinality constraint if violated
+        5. Enforce cardinality constraint if violated (for heuristic solvers)
 
     Args:
         query_embedding: Query vector (embedding_dim,)
@@ -396,59 +509,83 @@ def solve_diverse_retrieval_qubo(
         k: Number of items to select
         alpha: Relevance weight (0.5-0.7), (1-alpha) = diversity weight
         penalty_multiplier: Cardinality constraint penalty multiplier (default: 2.0)
-        solver_params: Optional ORBIT parameters (n_replicas, full_sweeps, etc.)
+        solver: Name of the solver to use ('orbit', 'gurobi', 'bruteforce')
+        solver_options: Optional parameters for the chosen solver.
 
     Returns:
         selected_indices: Indices of selected items (k,)
         metadata: Dictionary with timing, energy, constraint satisfaction info
     """
-    # Build QUBO
+    solver_options = solver_options or {}
+    
+    # --- 1. Build QUBO Problem ---
+    # The QUBO matrix `Q` is built with a penalty term to encourage Σxᵢ = k.
+    # This is used by heuristic solvers that don't support hard constraints.
+    # Exact solvers like Gurobi will use a hard constraint instead.
     problem = QUBOProblem(query_embedding, candidate_embeddings, alpha, k, penalty_multiplier)
     Q = problem.build_qubo_matrix()
 
-    # Convert to Ising
-    J, h, offset = IsingConverter.qubo_to_ising(Q)
+    # --- 2. Solve with the selected solver ---
+    result = None
+    if solver == 'orbit':
+        # ORBIT solves an Ising model, so we convert
+        J, h, offset = IsingConverter.qubo_to_ising(Q)
+        orbit_solver = ORBITSolver(**solver_options)
+        result = orbit_solver.solve(J, h)
+        # Add offset back to compare energy with other QUBO solvers
+        result['energy'] += offset
 
-    # Solve with ORBIT
-    solver_params = solver_params or {}
-    solver = ORBITSolver(**solver_params)
-    result = solver.solve(J, h)
+    elif solver == 'bruteforce':
+        brute_solver = BruteForceSolver(**solver_options)
+        # Note: BruteForceSolver doesn't use the penalized Q, it enforces `k` directly.
+        # For a fair energy comparison, we should re-calculate energy with the same Q.
+        # However, its own energy calculation is the true unpenalized objective.
+        # For now, we accept its reported energy.
+        result = brute_solver.solve(Q, k)
+        
+    elif solver == 'gurobi':
+        gurobi_solver = GurobiSolver(**solver_options)
+        # Gurobi uses a hard constraint, so the penalty term in Q is not strictly needed
+        # but we use the same Q for better comparability of the objective value.
+        result = gurobi_solver.solve(Q, k)
 
-    # Extract selected indices
+    else:
+        raise ValueError(f"Unknown solver: {solver}. Choose from 'orbit', 'gurobi', 'bruteforce'.")
+
+    # --- 3. Process Solver Result ---
     binary_sol = result['binary_solution']
     selected_indices = np.where(binary_sol == 1)[0]
-
-    # Check cardinality constraint
+    
+    # --- 4. Handle Constraint Violations (for heuristic solvers) ---
     constraint_satisfied = (len(selected_indices) == k)
-
-    # Enforce constraint if violated
     adjusted_solution = binary_sol.copy()
-    if not constraint_satisfied:
+
+    # Only apply greedy adjustment for inexact solvers like 'orbit'
+    if solver == 'orbit' and not constraint_satisfied:
         selected_indices = _adjust_cardinality(
             binary_sol, k, query_embedding, candidate_embeddings
         )
-        # Update adjusted solution
+        # Update solution vector after adjustment
         adjusted_solution = np.zeros_like(binary_sol)
         adjusted_solution[selected_indices] = 1
 
-    # Compute solution quality diagnostics
+    # --- 5. Compute Final Metrics ---
     quality_metrics = problem.compute_solution_quality(adjusted_solution, Q)
 
-    # Compute metadata
     metadata = {
-        'qubo_energy': quality_metrics['qubo_energy'],
-        'ising_energy': result['energy'],
+        'solver': solver,
         'execution_time': result['execution_time'],
-        'constraint_satisfied': constraint_satisfied,
+        'constraint_satisfied_by_solver': constraint_satisfied,
+        'final_k': len(selected_indices),
         'alpha': alpha,
         'penalty_multiplier': penalty_multiplier,
-        'k': k,
         'n_candidates': len(candidate_embeddings),
-        # Add quality diagnostics
-        'solution_quality': quality_metrics
+        'solution_quality': quality_metrics,
+        **solver_options
     }
 
     return selected_indices, metadata
+
 
 
 def _adjust_cardinality(

@@ -240,7 +240,7 @@ Standard dependencies.
 ## Unnecessary Files
 
 **Potentially Redundant:**
-1.  ⚠️ **Multiple `data/medical_diagnosis/generate_*.py` scripts**
+1.  ⚠️ **Multiple `data/medical/raw/generate_*.py` scripts**
     * *Recommendation:* Check if these are variations or duplicates. Could consolidate into one generator with CLI arguments.
 2.  ⚠️ **`run_notebook.py`**
     * *Recommendation:* Keep if you need programmatic execution, otherwise it's optional for a notebook-based demo.

@@ -68,7 +68,7 @@ class WikipediaFetcher:
     - Paragraph extraction and filtering
     """
 
-    def __init__(self, cache_dir: str = "./data/wikipedia/cache"):
+    def __init__(self, cache_dir: str = "./cache"):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True, parents=True)
 
@@ -182,7 +182,7 @@ class WikipediaFetcher:
         return sections
 
     def fetch_article(
-        self,
+        self, 
         title: str,
         use_cache: bool = True,
         max_retries: int = 3
@@ -294,3 +294,4 @@ class WikipediaFetcher:
             'total_paragraphs': total_paragraphs,
             'avg_paragraphs_per_section': total_paragraphs / len(article.sections) if article.sections else 0
         }
+

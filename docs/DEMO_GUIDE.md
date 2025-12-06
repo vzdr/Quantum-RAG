@@ -6,7 +6,7 @@ This demo showcases how QUBO-RAG's diversity optimization provides superior retr
 ## What Was Changed
 
 ### 1. Medical Diagnosis Dataset
-- **Location:** `data/medical_diagnosis/`
+- **Location:** `data/medical/raw/`
 - **Content:** 60 medical document chunks covering 6 diseases
 - **Diseases:**
   - Lupus (SLE)
@@ -38,12 +38,12 @@ This demo showcases how QUBO-RAG's diversity optimization provides superior retr
 ### Step 1: Ensure Medical Data Exists
 ```bash
 # Check that medical documents were generated
-ls data/medical_diagnosis/*.txt | wc -l  # Should show 60
+ls data/medical/raw/*.txt | wc -l  # Should show 60
 ```
 
 If not, run:
 ```bash
-cd data/medical_diagnosis
+cd data/medical/raw
 python generate_medical_data.py
 ```
 
@@ -267,8 +267,8 @@ If any criteria aren't met, refer to Troubleshooting section above.
 
 ## File Reference
 
-- **Medical Data:** `data/medical_diagnosis/*.txt` (60 files)
-- **Data Generator:** `data/medical_diagnosis/generate_medical_data.py`
+- **Medical Data:** `data/medical/raw/*.txt` (60 files)
+- **Data Generator:** `data/medical/raw/generate_medical_data.py`
 - **Notebook:** `RAG_System.ipynb`
 - **Document Loader:** `core/document_loader.py` (disease metadata extraction)
 - **QUBO Solver:** `core/qubo_solver.py`

@@ -9,7 +9,7 @@ All planned improvements have been successfully implemented to showcase QUBO-RAG
 ## What Was Implemented
 
 ### 1. Medical Diagnosis Synthetic Dataset ✅
-**Location:** `data/medical_diagnosis/`
+**Location:** `data/medical/raw`
 
 - **60 medical document chunks** covering 6 diseases
 - **Strategic symptom overlap** designed to create retrieval challenges
@@ -43,7 +43,7 @@ All planned improvements have been successfully implemented to showcase QUBO-RAG
 ### 3. Updated Notebook (RAG_System.ipynb) ✅
 
 #### Modified Cells:
-1. **Cell 5:** Changed data path from `'./data/lotr'` to `'./data/medical_diagnosis'`
+1. **Cell 5:** Changed data path from `'./data/samples/lotr'` to `'./data/medical_diagnosis'`
    - Shows disease distribution when loading
    - Displays metadata for first 5 documents
 
@@ -142,8 +142,8 @@ This multi-faceted approach makes the advantage undeniable.
 ## Files Created/Modified Summary
 
 ### New Files:
-1. `data/medical_diagnosis/generate_medical_data.py` (15 KB)
-2. `data/medical_diagnosis/*.txt` (60 files, ~300-500 chars each)
+1. `data/medical/rawgenerate_medical_data.py` (15 KB)
+2. `data/medical/raw*.txt` (60 files, ~300-500 chars each)
 3. `DEMO_GUIDE.md` (9.7 KB)
 4. `IMPLEMENTATION_SUMMARY.md` (this file)
 
@@ -163,7 +163,7 @@ This multi-faceted approach makes the advantage undeniable.
 ### Quick Start:
 ```bash
 # 1. Verify medical data exists
-ls data/medical_diagnosis/*.txt | wc -l  # Should show 60
+ls data/medical/raw*.txt | wc -l  # Should show 60
 
 # 2. Open notebook
 jupyter notebook RAG_System.ipynb

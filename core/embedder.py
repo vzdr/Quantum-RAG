@@ -7,6 +7,7 @@ Features:
 - Multiple model support
 - CPU/GPU device selection
 """
+import torch
 from dataclasses import dataclass
 from typing import List, Optional, Callable
 import numpy as np
@@ -76,17 +77,20 @@ class EmbeddingGenerator:
     def __init__(
         self,
         model_name: str = "all-MiniLM-L6-v2",
-        device: str = "cpu"
+        device: str = None
     ):
         """
         Initialize the embedding generator.
 
         Args:
             model_name: Name of the sentence-transformers model
-            device: Device to use ('cpu' or 'cuda')
+            device: Device to use ('cpu' or 'cuda'). If None, will auto-detect.
         """
         self.model_name = model_name
-        self.device = device
+        if device is None:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
         self._model: Optional[SentenceTransformer] = None
         self._embedding_dim: Optional[int] = None
 
