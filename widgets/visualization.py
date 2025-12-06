@@ -27,7 +27,8 @@ def create_embedding_visualization(
     retrieved_indices: Optional[List[int]] = None,
     retrieval_scores: Optional[List[float]] = None,
     perplexity: int = 30,
-    n_neighbors: int = 15
+    n_neighbors: int = 15,
+    max_points: int = 2000  # Subsample if more than this
 ) -> go.Figure:
     """
     Create an interactive embedding visualization.
@@ -41,6 +42,7 @@ def create_embedding_visualization(
         retrieval_scores: Optional list of similarity scores for retrieved chunks
         perplexity: t-SNE perplexity parameter
         n_neighbors: UMAP n_neighbors parameter
+        max_points: Subsample to this many points for speed (default 2000)
 
     Returns:
         Plotly figure
@@ -50,6 +52,16 @@ def create_embedding_visualization(
         fig.add_annotation(text="No embeddings to visualize", xref="paper", yref="paper", x=0.5, y=0.5)
         return fig
 
+    # Subsample if too many points (for speed)
+    if len(embeddings) > max_points:
+        indices = np.random.choice(len(embeddings), max_points, replace=False)
+        embeddings = embeddings[indices]
+        metadata = [metadata[i] for i in indices]
+        # Adjust retrieved_indices if present
+        if retrieved_indices is not None:
+            idx_set = set(indices)
+            retrieved_indices = [i for i in retrieved_indices if i in idx_set]
+
     # Combine embeddings if query is provided
     all_embeddings = embeddings
     if query_embedding is not None:
@@ -58,7 +70,18 @@ def create_embedding_visualization(
     # Dimensionality reduction
     if method == 'UMAP':
         from umap import UMAP
-        reducer = UMAP(n_neighbors=min(n_neighbors, len(all_embeddings)-1), min_dist=0.1, random_state=42)
+        # Fast UMAP params: fewer neighbors, lower min_dist, no verbose
+        n_neighbors_fast = min(5, len(all_embeddings)-1)  # Reduced from 15 to 5 for speed
+        reducer = UMAP(
+            n_neighbors=n_neighbors_fast,
+            min_dist=0.1,
+            metric='euclidean',  # Faster than cosine
+            n_epochs=200,  # Reduced from default 500
+            init='spectral',  # Faster initialization
+            random_state=42,
+            verbose=False,
+            low_memory=False  # Use more memory for speed
+        )
         reduced = reducer.fit_transform(all_embeddings)
     elif method == 't-SNE':
         from sklearn.manifold import TSNE
