@@ -178,7 +178,7 @@ def retrieve_topk(query_embedding: np.ndarray,
 
 
 # ============================================================================
-# QUBO RETRIEVAL (OURS)
+# QUBO RETRIEVAL (OURS) - Using merged solver with /2.0 fix
 # ============================================================================
 
 def retrieve_qubo_gurobi(query_embedding: np.ndarray,
@@ -189,25 +189,21 @@ def retrieve_qubo_gurobi(query_embedding: np.ndarray,
                         penalty: float = 1000.0,
                         verbose: bool = False) -> Tuple[List[Dict], Dict]:
     """
-    QUBO-based retrieval using Gurobi optimizer.
+    QUBO-based retrieval using the merged QUBO solver with /2.0 fix.
 
-    Energy Function:
-        E = -Σ(relevance_i * x_i) + α * ΣΣ(similarity_ij * x_i * x_j) + P * (Σx_i - k)²
+    Uses the corrected energy formulation from core.qubo_solver:
+        Energy = alpha * s^T Q s - h^T s + P * (s^T 1 - k)^2
 
-    Where:
-        - relevance_i: cosine similarity between query and chunk i
-        - similarity_ij: cosine similarity between chunks i and j
-        - x_i: binary variable (1 = selected, 0 = not selected)
-        - α: diversity penalty weight (higher = more diversity emphasis)
-        - P: cardinality penalty (enforces exactly k chunks selected)
-        - k: desired number of chunks
+    With critical /2.0 fix in QUBO matrix construction:
+        M[i,j] = (alpha * Q[i,j] + P) / 2.0  (off-diagonal)
+        M[i,i] = -h[i] + P * (1 - 2k)        (diagonal)
 
     Args:
         query_embedding: Query vector
         candidate_chunks: List of candidate chunks
         candidate_embeddings: Dictionary of embeddings
         k: Number of chunks to retrieve
-        alpha: Diversity penalty weight (higher = more diversity)
+        alpha: Diversity weight (higher = more diversity)
         penalty: Cardinality constraint penalty
         verbose: Print Gurobi output
 
@@ -215,12 +211,11 @@ def retrieve_qubo_gurobi(query_embedding: np.ndarray,
         selected_chunks: Optimally selected chunks
         metadata: Solver metadata (objective value, time, etc.)
     """
-    n = len(candidate_chunks)
+    from core.qubo_solver import solve_diverse_retrieval_qubo
 
-    # Prepare embeddings and compute similarities
+    # Prepare embeddings array
     chunk_ids = []
     chunk_embs = []
-    relevance_scores = []
 
     for chunk in candidate_chunks:
         chunk_id = chunk['chunk_id']
@@ -231,63 +226,35 @@ def retrieve_qubo_gurobi(query_embedding: np.ndarray,
 
         chunk_ids.append(chunk_id)
         chunk_embs.append(chunk_emb)
-        relevance_scores.append(cosine_similarity(query_embedding, chunk_emb))
 
-    n = len(chunk_ids)
-    relevance_scores = np.array(relevance_scores)
+    candidate_embs_array = np.array(chunk_embs)
 
-    # Compute pairwise similarity matrix
-    similarity_matrix = compute_similarity_matrix(chunk_embs)
-
-    # Create Gurobi model
-    model = gp.Model("QUBO_Retrieval")
-    if not verbose:
-        model.setParam('OutputFlag', 0)
-
-    # Binary decision variables
-    x = model.addVars(n, vtype=GRB.BINARY, name="x")
-
-    # Objective function components (matching markdown formulation)
-    # 1. Relevance term: maximize Σ(relevance_i * x_i)
-    #    Negative sign for minimization (no alpha multiplier)
-    relevance_term = -gp.quicksum(relevance_scores[i] * x[i] for i in range(n))
-
-    # 2. Diversity term: minimize α * ΣΣ(similarity_ij * x_i * x_j)
-    #    Higher similarity = less diverse, so we penalize it
-    #    Only alpha multiplier (not 1-alpha)
-    diversity_term = alpha * gp.quicksum(
-        similarity_matrix[i, j] * x[i] * x[j]
-        for i in range(n)
-        for j in range(i+1, n)
+    # Use the merged QUBO solver
+    selected_indices, metadata = solve_diverse_retrieval_qubo(
+        query_embedding=query_embedding,
+        candidate_embeddings=candidate_embs_array,
+        k=k,
+        alpha=alpha,
+        penalty=penalty,
+        solver='gurobi',
+        solver_options={'OutputFlag': 1 if verbose else 0}
     )
 
-    # 3. Cardinality penalty: P * (Σx_i - k)²
-    sum_x = gp.quicksum(x[i] for i in range(n))
-    cardinality_penalty = penalty * (sum_x - k) * (sum_x - k)
-
-    # Total objective: E = -r^T x + α x^T S x + P(Σx - k)^2
-    objective = relevance_term + diversity_term + cardinality_penalty
-
-    model.setObjective(objective, GRB.MINIMIZE)
-
-    # Solve
-    model.optimize()
-
-    # Extract solution
-    selected_indices = [i for i in range(n) if x[i].X > 0.5]
+    # Map back to chunks
     selected_chunks = [candidate_chunks[i] for i in selected_indices
-                      if chunk_ids[i] == candidate_chunks[i]['chunk_id']]
+                      if i < len(candidate_chunks) and chunk_ids[i] == candidate_chunks[i]['chunk_id']]
 
-    metadata = {
-        'objective_value': model.ObjVal,
-        'solve_time': model.Runtime,
+    # Reformat metadata for compatibility
+    return_metadata = {
+        'objective_value': metadata['solution_quality']['energy'],
+        'solve_time': metadata.get('execution_time', 0),
         'num_selected': len(selected_indices),
         'alpha': alpha,
         'penalty': penalty,
-        'avg_relevance': float(np.mean([relevance_scores[i] for i in selected_indices])) if selected_indices else 0.0
+        'avg_relevance': metadata['solution_quality']['avg_relevance']
     }
 
-    return selected_chunks, metadata
+    return selected_chunks, return_metadata
 
 
 # ============================================================================
