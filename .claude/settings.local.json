@@ -25,7 +25,10 @@
       "Bash(timeout 60 python:*)",
       "Bash(venvScriptspython.exe experimentsexp_1_1_poisoned_stress_test.py --num-prompts 1)",
       "Bash(\"venv/Scripts/python.exe\" experiments/exp_1_1_poisoned_stress_test.py --num-prompts 1)",
-      "Bash(\"venv/Scripts/python.exe\":*)"
+      "Bash(\"venv/Scripts/python.exe\":*)",
+      "Bash(\"venv/Scripts/python.exe\" test_submission_notebook.py)",
+      "Bash(\"venv/Scripts/python.exe\" -m pip list)",
+      "Bash(\"venv/Scripts/python.exe\" -m pip install gurobipy)"
     ],
     "deny": [],
     "ask": []
