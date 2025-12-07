@@ -246,12 +246,12 @@ def retrieve_qubo_gurobi(query_embedding: np.ndarray,
 
     # Reformat metadata for compatibility
     return_metadata = {
-        'objective_value': metadata['solution_quality']['energy'],
+        'objective_value': metadata.get('energy', 0),
         'solve_time': metadata.get('execution_time', 0),
         'num_selected': len(selected_indices),
         'alpha': alpha,
         'penalty': penalty,
-        'avg_relevance': metadata['solution_quality']['avg_relevance']
+        'avg_relevance': metadata.get('solution_quality', {}).get('avg_relevance', 0)
     }
 
     return selected_chunks, return_metadata
