@@ -40,7 +40,7 @@ class RAGConfig:
     persist_directory: str = "./chroma_db"
 
     # Retrieval parameters
-    top_k: int = 5
+    top_k: int = 2
     similarity_threshold: float = 0.0
 
     # Generation parameters

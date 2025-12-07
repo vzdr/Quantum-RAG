@@ -139,7 +139,7 @@ def create_embedding_visualization(
                 colorscale='RdYlGn',  # Red (low) -> Yellow -> Green (high)
                 cmin=0,
                 cmax=1,
-                colorbar=dict(title='Similarity', x=1.02)
+                colorbar=dict(title='Normalized Similarity', x=1.02)
             ),
             text=[f"Score: {s:.3f}<br>Source: {src}<br>{txt}"
                   for s, src, txt in zip(all_similarities, df['source'], df['text'])],
