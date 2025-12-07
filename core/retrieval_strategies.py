@@ -292,8 +292,8 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
 
     def __init__(
         self,
-        alpha: float = 0.6,
-        penalty_multiplier: float = 2.0,
+        alpha: float = 0.05,
+        penalty: float = 1000.0,
         solver: str = 'orbit',
         solver_options: Optional[Dict[str, Any]] = None,
         solver_preset: str = 'balanced'
@@ -302,28 +302,24 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
         Initialize QUBO strategy.
 
         Args:
-            alpha: Relevance weight (0.5-0.7), (1-alpha) = diversity weight
-            penalty_multiplier: Cardinality constraint penalty multiplier (for heuristic solvers)
+            alpha: Diversity weight (default: 0.05). Controls penalty for similar documents.
+            penalty: Cardinality constraint penalty (default: 1000.0). Enforces exactly K selections.
             solver: Backend solver ('orbit', 'gurobi', 'bruteforce').
             solver_options: Solver-specific parameters (overrides preset if provided).
             solver_preset: For 'orbit' solver, preset configuration ('fast', 'balanced', 'quality').
         """
         self.alpha = alpha
-        self.penalty_multiplier = penalty_multiplier
+        self.penalty = penalty
         self.solver = solver
         self.solver_preset = solver_preset
-        
+
         # Process solver options and presets
         if solver_options is not None:
             self.solver_options = solver_options
             self.solver_preset = 'custom'
         elif self.solver == 'orbit':
-            if solver_preset not in SOLVER_PRESETS:
-                raise ValueError(
-                    f"Unknown solver_preset '{solver_preset}' for 'orbit' solver. "
-                    f"Choose from: {list(SOLVER_PRESETS.keys())}"
-                )
-            self.solver_options = SOLVER_PRESETS[solver_preset].copy()
+            # Store preset name, will be used in solve_diverse_retrieval_qubo
+            self.solver_options = {'preset': solver_preset}
         else:
             # For non-orbit solvers, default to empty options if none provided
             self.solver_options = {}
@@ -335,7 +331,7 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
     def get_parameters(self) -> Dict[str, Any]:
         return {
             'alpha': self.alpha,
-            'penalty_multiplier': self.penalty_multiplier,
+            'penalty': self.penalty,
             'solver': self.solver,
             'solver_preset': self.solver_preset,
             **self.solver_options
@@ -351,7 +347,7 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
         """
         QUBO-based diverse retrieval.
 
-        minimize: -α * Σᵢ sim(q, cᵢ) * xᵢ + (1-α) * Σᵢⱼ sim(cᵢ, cⱼ) * xᵢ * xⱼ
+        minimize: -Σᵢ sim(q, cᵢ) * xᵢ + α * Σᵢⱼ sim(cᵢ, cⱼ) * xᵢ * xⱼ + P * (Σxᵢ - k)²
         subject to: Σxᵢ = k
         """
         from .qubo_solver import solve_diverse_retrieval_qubo
@@ -370,7 +366,7 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
             candidate_embeddings=candidate_embeddings,
             k=k,
             alpha=self.alpha,
-            penalty_multiplier=self.penalty_multiplier,
+            penalty=self.penalty,
             solver=self.solver,
             solver_options=self.solver_options
         )

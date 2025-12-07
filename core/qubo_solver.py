@@ -1,668 +1,418 @@
 """
 QUBO Solver Module
 
-Implements QUBO-based diverse retrieval optimization using ORBIT simulator.
+Solves diverse retrieval as QUBO using the direct formula:
+    Energy = alpha * s^T Q s - h^T s + P * (s^T 1 - k)^2
 
-Components:
-- QUBOProblem: Constructs QUBO matrix from query and candidate embeddings
-- IsingConverter: Converts between QUBO and Ising formulations
-- ORBITSolver: Wrapper for ORBIT p-bit simulator
-- Helper functions for constraint enforcement
+Where:
+    Q: chunk-to-chunk similarity matrix (n x n)
+    h: chunk-to-query similarity vector (n,)
+    s: binary selection vector {0,1}^n
+    alpha: diversity weight
+    P: cardinality penalty
+    k: number of selections
 """
 
 from typing import Dict, Any, Tuple, Optional
-import time
-from itertools import combinations
 import numpy as np
 
 
-class QUBOProblem:
+def compute_cosine_similarities(
+    query_emb: np.ndarray,
+    candidate_embs: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Constructs and manages QUBO problem for diverse retrieval.
+    Compute similarity vectors and matrices.
 
-    Formulation:
-        minimize f(x) = -1 * Σᵢ sim(query, chunkᵢ) * xᵢ
-                        + α * Σᵢ Σⱼ>ᵢ sim(chunkᵢ, chunkⱼ) * xᵢ * xⱼ
-        subject to: Σxᵢ = k
+    Args:
+        query_emb: Query embedding (d,)
+        candidate_embs: Candidate embeddings (n, d)
 
-    where:
-        - xᵢ ∈ {0,1}: binary decision variable
-        - α: diversity vs relevance trade-off
-        - Linear term: rewards query-chunk similarity (relevance)
-        - Quadratic term: penalizes inter-chunk similarity (diversity)
+    Returns:
+        h: Query-to-chunk similarities (n,)
+        Q: Chunk-to-chunk similarities (n, n)
     """
+    # Normalize
+    query_norm = query_emb / np.linalg.norm(query_emb)
+    cand_norms = candidate_embs / np.linalg.norm(candidate_embs, axis=1, keepdims=True)
 
-    def __init__(
-        self,
-        query_embedding: np.ndarray,
-        candidate_embeddings: np.ndarray,
-        alpha: float,
-        k: int,
-        penalty_multiplier: float = 10.0
-    ):
-        """
-        Initialize QUBO problem.
+    # h vector: query similarities
+    h = np.dot(cand_norms, query_norm)
 
-        Args:
-            query_embedding: Query vector (embedding_dim,)
-            candidate_embeddings: Candidate vectors (n_candidates, embedding_dim)
-            alpha: Diversity weight
-            k: Number of items to select
-            penalty_multiplier: Multiplier for cardinality penalty (default: 10.0)
-                              Higher = stricter constraint enforcement
-        """
-        self.query_embedding = query_embedding
-        self.candidate_embeddings = candidate_embeddings
-        self.alpha = alpha
-        self.k = k
-        self.n = len(candidate_embeddings)
-        self.penalty_multiplier = penalty_multiplier
+    # Q matrix: pairwise similarities
+    Q = np.dot(cand_norms, cand_norms.T)
 
-        # Cache similarity matrices for diagnostics
-        self.query_sims = None
-        self.pairwise_sims = None
-
-    def build_qubo_matrix(self) -> np.ndarray:
-        """
-        Construct QUBO matrix Q (n × n) from problem formulation.
-
-        Returns:
-            Q: Symmetric QUBO matrix with cardinality constraint encoded
-        """
-        Q = np.zeros((self.n, self.n))
-
-        # Compute similarity matrices and cache for diagnostics
-        self.query_sims = self._compute_query_similarities()
-        self.pairwise_sims = self._compute_pairwise_similarities()
-
-        # Estimate penalty parameter for cardinality constraint
-        penalty_lambda = self._estimate_penalty_parameter()
-
-        # Build diagonal (linear terms + cardinality penalty)
-        for i in range(self.n):
-            # Relevance term
-            Q[i, i] = -1 * self.query_sims[i]
-
-            # Cardinality penalty: λ * (1 - 2k)
-            Q[i, i] += penalty_lambda * (1 - 2 * self.k)
-
-        # Build off-diagonal (quadratic terms + cardinality penalty)
-        for i in range(self.n):
-            for j in range(i + 1, self.n):
-                # Diversity term
-                Q[i, j] = self.alpha * self.pairwise_sims[i, j]
-
-                # Cardinality penalty: 2λ
-                Q[i, j] += 2 * penalty_lambda
-
-                # Ensure symmetry
-                Q[j, i] = Q[i, j]
-
-        return Q
-
-    def _compute_query_similarities(self) -> np.ndarray:
-        """
-        Compute cosine similarity between query and all candidates.
-
-        Returns:
-            Similarity scores (n_candidates,)
-        """
-        # Normalize vectors
-        query_norm = self.query_embedding / np.linalg.norm(self.query_embedding)
-        cand_norms = self.candidate_embeddings / np.linalg.norm(
-            self.candidate_embeddings, axis=1, keepdims=True
-        )
-
-        # Cosine similarity
-        return np.dot(cand_norms, query_norm)
-
-    def _compute_pairwise_similarities(self) -> np.ndarray:
-        """
-        Compute pairwise cosine similarity matrix for candidates.
-
-        Returns:
-            Similarity matrix (n_candidates, n_candidates)
-        """
-        # Normalize vectors
-        norms = self.candidate_embeddings / np.linalg.norm(
-            self.candidate_embeddings, axis=1, keepdims=True
-        )
-
-        # Pairwise cosine similarity
-        return np.dot(norms, norms.T)
-
-    def _estimate_penalty_parameter(self) -> float:
-        """
-        Estimate penalty parameter λ for cardinality constraint.
-
-        Rule: λ should dominate other terms to enforce constraint.
-        Strategy: Use penalty_multiplier * max_similarity_value
-
-        The penalty_multiplier controls how strictly the cardinality constraint
-        is enforced:
-        - Higher values (2.5-3.0): Stricter enforcement, may reduce diversity
-        - Lower values (1.5-2.0): Softer enforcement, may violate constraint
-
-        Returns:
-            Penalty parameter λ
-        """
-        max_query_sim = np.max(np.abs(self.query_sims))
-        max_pair_sim = np.max(np.abs(self.pairwise_sims))
-        return self.penalty_multiplier * max(max_query_sim, max_pair_sim)
-
-    def compute_solution_quality(self, solution: np.ndarray, Q: np.ndarray) -> Dict[str, float]:
-        """
-        Compute quality metrics for a QUBO solution.
-
-        Diagnostics help understand solver performance and parameter tuning:
-        - QUBO energy: Lower is better (minimization problem)
-        - Constraint violation: Should be 0 for exact k selections
-        - Intra-list similarity: Lower = more diverse
-        - Average relevance: Higher = more relevant to query
-
-        Args:
-            solution: Binary solution vector {0, 1}^n
-            Q: QUBO matrix used to generate solution
-
-        Returns:
-            Dictionary with quality metrics
-        """
-        # QUBO energy (objective value)
-        energy = float(solution @ Q @ solution)
-
-        # Cardinality constraint check
-        k_actual = int(np.sum(solution))
-        constraint_violation = abs(k_actual - self.k)
-
-        # Get selected indices
-        selected_indices = np.where(solution == 1)[0]
-
-        # Compute diversity of selected chunks (intra-list similarity)
-        if len(selected_indices) > 1:
-            selected_pairwise = self.pairwise_sims[selected_indices][:, selected_indices]
-            # Average off-diagonal elements
-            n = len(selected_indices)
-            intra_similarity = (np.sum(selected_pairwise) - n) / (n * (n - 1))
-        else:
-            intra_similarity = 0.0
-
-        # Average relevance of selected chunks
-        if len(selected_indices) > 0:
-            avg_relevance = float(np.mean(self.query_sims[selected_indices]))
-        else:
-            avg_relevance = 0.0
-
-        return {
-            'qubo_energy': energy,
-            'constraint_violation': constraint_violation,
-            'k_actual': k_actual,
-            'k_target': self.k,
-            'intra_list_similarity': float(intra_similarity),
-            'avg_relevance': avg_relevance,
-            'min_relevance': float(np.min(self.query_sims[selected_indices])) if len(selected_indices) > 0 else 0.0,
-            'max_relevance': float(np.max(self.query_sims[selected_indices])) if len(selected_indices) > 0 else 0.0,
-        }
+    return h, Q
 
 
-class IsingConverter:
+def evaluate_energy(s: np.ndarray, Q: np.ndarray, h: np.ndarray, alpha: float, P: float, k: int) -> float:
     """
-    Converts between QUBO and Ising formulations for ORBIT.
+    Evaluate the energy function: alpha * s^T Q s - h^T s + P * (s^T 1 - k)^2
 
-    ORBIT expects Ising format:
-        H_Ising = Σᵢⱼ J[i,j] * sᵢ * sⱼ + Σᵢ h[i] * sᵢ
+    Args:
+        s: Binary selection vector
+        Q: Pairwise similarity matrix
+        h: Query similarity vector
+        alpha: Diversity weight
+        P: Penalty weight
+        k: Target selections
 
-    where sᵢ ∈ {-1, 1}
-
-    Conversion from QUBO (xᵢ ∈ {0, 1}) to Ising:
-        xᵢ = (sᵢ + 1) / 2
+    Returns:
+        Energy value
     """
+    diversity_term = alpha * (s @ Q @ s)
+    relevance_term = -(h @ s)
+    cardinality_term = P * (np.sum(s) - k) ** 2
 
-    @staticmethod
-    def qubo_to_ising(Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
-        """
-        Convert QUBO matrix to Ising parameters.
-
-        Mapping: xᵢ ∈ {0,1} → sᵢ ∈ {-1,1} via xᵢ = (sᵢ + 1) / 2
-
-        QUBO: Σᵢⱼ Q[i,j] * xᵢ * xⱼ
-        Ising: Σᵢⱼ J[i,j] * sᵢ * sⱼ + Σᵢ h[i] * sᵢ + offset
-
-        Conversion formulas:
-            J[i,j] = Q[i,j] / 4  (for i ≠ j)
-            h[i] = (Σⱼ Q[i,j]) / 2 - Q[i,i] / 2
-            offset = Σᵢ Q[i,i] / 4 + Σᵢⱼ (i<j) Q[i,j] / 4
-
-        Args:
-            Q: QUBO matrix (n × n, symmetric)
-
-        Returns:
-            J: Coupling matrix (n × n)
-            h: External field vector (n,)
-            offset: Constant energy offset
-        """
-        n = Q.shape[0]
-
-        # Coupling matrix J
-        J = Q / 4.0
-        np.fill_diagonal(J, 0)  # No self-coupling in Ising
-
-        # External field h
-        h = np.zeros(n)
-        for i in range(n):
-            h[i] = np.sum(Q[i, :]) / 2.0 - Q[i, i] / 2.0
-
-        # Constant offset
-        offset = np.sum(np.diag(Q)) / 4.0
-        for i in range(n):
-            for j in range(i + 1, n):
-                offset += Q[i, j] / 4.0
-
-        return J, h, offset
-
-    @staticmethod
-    def ising_to_binary(ising_state: np.ndarray) -> np.ndarray:
-        """
-        Convert Ising solution {-1, 1} to binary {0, 1}.
-
-        Mapping: xᵢ = (sᵢ + 1) / 2
-
-        Args:
-            ising_state: Ising solution vector {-1, 1}^n
-
-        Returns:
-            Binary solution vector {0, 1}^n
-        """
-        return ((ising_state + 1) / 2).astype(int)
+    return diversity_term + relevance_term + cardinality_term
 
 
-class ORBITSolver:
+def solve_with_bruteforce(Q: np.ndarray, h: np.ndarray, k: int, alpha: float, P: float) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
-    Wrapper for ORBIT p-bit simulator.
+    Solve by brute-force enumeration.
 
-    ORBIT is a probabilistic computing simulator that solves Ising
-    problems using parallel tempering Monte Carlo.
+    Args:
+        Q: Pairwise similarity matrix
+        h: Query similarity vector
+        k: Number of items to select
+        alpha: Diversity weight
+        P: Penalty weight
+
+    Returns:
+        solution: Binary solution vector
+        metadata: Solver information
     """
+    import time
+    from itertools import combinations
 
-    def __init__(
-        self,
-        n_replicas: int = 4,
-        full_sweeps: int = 10000,
-        beta_initial: float = 0.35,
-        beta_end: float = 3.5,
-        beta_step_interval: int = 1,
-        max_processes: Optional[int] = None
-    ):
-        """
-        Initialize ORBIT solver parameters.
+    n = len(h)
+    if n > 25:
+        raise ValueError(f"Brute-force infeasible for n={n} (max 25)")
 
-        Args:
-            n_replicas: Number of parallel replicas (default: 4)
-            full_sweeps: Number of annealing sweeps (default: 10000)
-                        Higher = better quality, slower
-            beta_initial: Initial inverse temperature (default: 0.35)
-                         Low = high exploration
-            beta_end: Final inverse temperature (default: 3.5)
-                     High = exploitation/convergence
-            beta_step_interval: Sweeps per temperature step (default: 1)
-            max_processes: Max CPU cores to use (default: auto)
-        """
-        self.n_replicas = n_replicas
-        self.full_sweeps = full_sweeps
-        self.beta_initial = beta_initial
-        self.beta_end = beta_end
-        self.beta_step_interval = beta_step_interval
-        self.max_processes = max_processes
+    start = time.time()
+    best_energy = float('inf')
+    best_solution = None
 
-    def solve(self, J: np.ndarray, h: np.ndarray) -> Dict[str, Any]:
-        """
-        Solve Ising problem using ORBIT.
+    # Try all C(n,k) combinations
+    for selected in combinations(range(n), k):
+        s = np.zeros(n, dtype=int)
+        s[list(selected)] = 1
 
-        Args:
-            J: Coupling matrix (n × n)
-            h: External field vector (n,)
+        energy = evaluate_energy(s, Q, h, alpha, P, k)
 
-        Returns:
-            Dictionary with:
-                - 'binary_solution': Binary solution vector {0,1}^n
-                - 'ising_solution': Ising solution vector {-1,1}^n
-                - 'energy': Final energy
-                - 'execution_time': Solver runtime in seconds
-        """
-        try:
-            import orbit
-        except ImportError:
-            raise ImportError(
-                "ORBIT not found. Please install with: "
-                "uv pip install path/to/orbit-0.2.0-py3-none-any.whl"
-            )
+        if energy < best_energy:
+            best_energy = energy
+            best_solution = s
 
-        # Prepare solver parameters
-        solver_params = {
-            'J': J,
-            'h': h,
-            'n_replicas': self.n_replicas,
-            'full_sweeps': self.full_sweeps,
-            'beta_initial': self.beta_initial,
-            'beta_end': self.beta_end,
-            'beta_step_interval': self.beta_step_interval,
-        }
+    metadata = {
+        'solver': 'bruteforce',
+        'energy': best_energy,
+        'execution_time': time.time() - start
+    }
 
-        if self.max_processes is not None:
-            solver_params['max_processes'] = self.max_processes
-
-        # Run ORBIT optimization
-        result = orbit.optimize_ising(**solver_params)
-
-        # Convert Ising solution to binary
-        binary_solution = IsingConverter.ising_to_binary(result.min_state)
-
-        return {
-            'binary_solution': binary_solution,
-            'ising_solution': result.min_state,
-            'energy': result.min_cost,
-            'execution_time': result.execution_time if hasattr(result, 'execution_time') else None
-        }
+    return best_solution, metadata
 
 
-class BruteForceSolver:
+def solve_with_orbit(Q: np.ndarray, h: np.ndarray, k: int, alpha: float, P: float, **orbit_params) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
-    Exact QUBO solver using brute-force enumeration.
+    Solve using ORBIT by converting to QUBO matrix form.
 
-    Iterates through all C(n, k) combinations.
-    Only feasible for small n.
+    The formula: alpha * s^T Q s - h^T s + P * (s^T 1 - k)^2
+    needs to be converted to standard QUBO form: s^T M s
+
+    Expanding (s^T 1 - k)^2:
+        (s^T 1 - k)^2 = s^T 1 1^T s - 2k * s^T 1 + k^2
+                      = sum_ij(s_i * s_j) - 2k * sum_i(s_i) + k^2
+
+    For binary s where s_i^2 = s_i:
+        sum_ij(s_i * s_j) = sum_i(s_i) + sum_{i!=j}(s_i * s_j)
+
+    So the full formula in matrix form s^T M s is:
+        M_ij = alpha * Q_ij + P  (for i != j)
+        M_ii = -h_i + P * (1 - 2k)  (diagonal)
+
+    Args:
+        Q: Pairwise similarity matrix
+        h: Query similarity vector
+        k: Number of selections
+        alpha: Diversity weight
+        P: Penalty weight
+        **orbit_params: ORBIT solver parameters
+
+    Returns:
+        solution: Binary solution vector
+        metadata: Solver information
     """
-    def __init__(self, n_max: int = 32):
-        self.n_max = n_max
+    try:
+        import orbit
+    except ImportError:
+        raise ImportError("ORBIT not installed")
 
-    def solve(self, Q: np.ndarray, k: int) -> Dict[str, Any]:
-        """
-        Solve QUBO by enumerating all combinations.
+    n = len(h)
 
-        Args:
-            Q: QUBO matrix
-            k: Cardinality constraint
+    # Build QUBO matrix M
+    M = np.zeros((n, n))
 
-        Returns:
-            Solver result dictionary
-        """
-        n = Q.shape[0]
-        if n > self.n_max:
-            raise ValueError(
-                f"Brute-force solver is not feasible for n={n}. "
-                f"Maximum allowed is n={self.n_max}."
-            )
+    # Off-diagonal: alpha * Q[i,j] + P
+    M = alpha * Q + P * np.ones((n, n))
 
-        start_time = time.time()
-        
-        best_energy = float('inf')
-        best_solution = None
+    # Diagonal: -h_i + P * (1 - 2k)
+    np.fill_diagonal(M, -h + P * (1 - 2 * k))
 
-        # Generate all combinations of k indices
-        indices = range(n)
-        for selected_indices in combinations(indices, k):
-            x = np.zeros(n)
-            x[list(selected_indices)] = 1
-            
-            energy = x.T @ Q @ x
-            
-            if energy < best_energy:
-                best_energy = energy
-                best_solution = x
+    # Convert QUBO to Ising for ORBIT
+    # QUBO: E = s^T M s where s ∈ {0,1}
+    # Ising: E = sigma^T J sigma + h_ising^T sigma where sigma ∈ {-1,1}
+    # Mapping: s = (sigma + 1) / 2
 
-        execution_time = time.time() - start_time
-        
-        return {
-            'binary_solution': best_solution,
-            'energy': best_energy,
-            'execution_time': execution_time
-        }
+    J = M / 4.0
+    np.fill_diagonal(J, 0)  # No self-coupling
+
+    h_ising = np.sum(M, axis=1) / 2.0 - np.diag(M) / 2.0
+
+    offset = np.sum(np.diag(M)) / 4.0 + np.sum(np.triu(M, k=1)) / 4.0
+
+    # Default ORBIT parameters
+    params = {
+        'n_replicas': 4,
+        'full_sweeps': 10000,
+        'beta_initial': 0.35,
+        'beta_end': 3.5,
+        'beta_step_interval': 1
+    }
+    params.update(orbit_params)
+
+    # Solve
+    result = orbit.optimize_ising(
+        J=J,
+        h=h_ising,
+        n_replicas=params['n_replicas'],
+        full_sweeps=params['full_sweeps'],
+        beta_initial=params['beta_initial'],
+        beta_end=params['beta_end'],
+        beta_step_interval=params['beta_step_interval']
+    )
+
+    # Convert back to binary
+    sigma = result.min_state
+    s = ((sigma + 1) / 2).astype(int)
+
+    # Enforce exactly k selections
+    s = enforce_cardinality(s, k, h)
+
+    energy = evaluate_energy(s, Q, h, alpha, P, k)
+
+    metadata = {
+        'solver': 'orbit',
+        'energy': energy,
+        'ising_energy': result.min_cost,
+        'execution_time': getattr(result, 'execution_time', None),
+        **params
+    }
+
+    return s, metadata
 
 
-class GurobiSolver:
+def solve_with_gurobi(Q: np.ndarray, h: np.ndarray, k: int, alpha: float, P: float, time_limit: int = 10) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
-    Exact QUBO solver using Gurobi Optimizer.
+    Solve using Gurobi with hard cardinality constraint.
+
+    Args:
+        Q: Pairwise similarity matrix
+        h: Query similarity vector
+        k: Number of selections
+        alpha: Diversity weight
+        P: Penalty weight (not used, constraint is hard)
+        time_limit: Solver time limit
+
+    Returns:
+        solution: Binary solution vector
+        metadata: Solver information
     """
-    def __init__(self, time_limit: int = 10):
-        self.time_limit = time_limit
+    try:
+        import gurobipy as gp
+        from gurobipy import GRB
+    except ImportError:
+        raise ImportError("Gurobi not installed")
 
-    def solve(self, Q: np.ndarray, k: int) -> Dict[str, Any]:
-        """
-        Solve QUBO using Gurobi.
+    import time
+    n = len(h)
+    start = time.time()
 
-        Args:
-            Q: QUBO matrix
-            k: Cardinality constraint
+    with gp.Env(empty=True) as env:
+        env.setParam('OutputFlag', 0)
+        env.start()
 
-        Returns:
-            Solver result dictionary
-        """
-        try:
-            import gurobipy as gp
-            from gurobipy import GRB
-        except ImportError:
-            raise ImportError(
-                "Gurobi not found. Please install the 'gurobipy' package."
-            )
+        with gp.Model(env=env) as model:
+            # Variables
+            s = model.addMVar(shape=n, vtype=GRB.BINARY, name="s")
 
-        start_time = time.time()
-        n = Q.shape[0]
-        
-        with gp.Env(empty=True) as env:
-            env.set('OutputFlag', 0)
-            env.start()
-            with gp.Model(env=env) as model:
-                # Create variables
-                x = model.addMVar(shape=n, vtype=GRB.BINARY, name="x")
+            # Objective: alpha * s^T Q s - h^T s
+            # (no penalty term needed, we use hard constraint)
+            model.setObjective(alpha * s @ Q @ s - h @ s, GRB.MINIMIZE)
 
-                # Set objective
-                # Note: Gurobi minimizes, which is what we want
-                model.setObjective(x @ Q @ x, GRB.MINIMIZE)
-                
-                # Add cardinality constraint
-                model.addConstr(x.sum() == k, "cardinality")
+            # Hard cardinality constraint
+            model.addConstr(s.sum() == k, "cardinality")
 
-                # Set time limit
-                model.setParam('TimeLimit', self.time_limit)
+            # Solve
+            model.setParam('TimeLimit', time_limit)
+            model.optimize()
 
-                # Optimize model
-                model.optimize()
+            if model.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT]:
+                solution = np.array(s.X).astype(int)
+                energy = evaluate_energy(solution, Q, h, alpha, P, k)
+            else:
+                solution = np.zeros(n, dtype=int)
+                energy = float('inf')
 
-                execution_time = time.time() - start_time
+            metadata = {
+                'solver': 'gurobi',
+                'energy': energy,
+                'execution_time': time.time() - start,
+                'optimal': model.Status == GRB.OPTIMAL
+            }
 
-                if model.Status == GRB.OPTIMAL:
-                    solution = np.array(x.X).astype(int)
-                    energy = model.ObjVal
-                else:
-                    # Return a null solution if not optimal
-                    solution = np.zeros(n, dtype=int)
-                    energy = float('inf')
+            return solution, metadata
 
-                return {
-                    'binary_solution': solution,
-                    'energy': energy,
-                    'execution_time': execution_time
-                }
+
+def enforce_cardinality(s: np.ndarray, k: int, h: np.ndarray) -> np.ndarray:
+    """
+    Adjust solution to have exactly k selections based on relevance.
+
+    Args:
+        s: Binary solution vector
+        k: Target number of selections
+        h: Query similarity vector (for greedy adjustment)
+
+    Returns:
+        Adjusted solution with exactly k selections
+    """
+    selected = np.where(s == 1)[0]
+    current_k = len(selected)
+
+    if current_k == k:
+        return s
+
+    s = s.copy()
+
+    if current_k > k:
+        # Remove items with lowest relevance
+        remove_count = current_k - k
+        to_remove = selected[np.argsort(h[selected])[:remove_count]]
+        s[to_remove] = 0
+
+    elif current_k < k:
+        # Add items with highest relevance
+        unselected = np.where(s == 0)[0]
+        add_count = k - current_k
+        to_add = unselected[np.argsort(h[unselected])[-add_count:]]
+        s[to_add] = 1
+
+    return s
+
+
+# Solver presets for ORBIT
+ORBIT_PRESETS = {
+    'fast': {
+        'n_replicas': 2,
+        'full_sweeps': 5000,
+        'beta_initial': 0.35,
+        'beta_end': 3.5,
+        'beta_step_interval': 1
+    },
+    'balanced': {
+        'n_replicas': 4,
+        'full_sweeps': 10000,
+        'beta_initial': 0.35,
+        'beta_end': 3.5,
+        'beta_step_interval': 1
+    },
+    'quality': {
+        'n_replicas': 6,
+        'full_sweeps': 12000,
+        'beta_initial': 0.2,
+        'beta_end': 4.0,
+        'beta_step_interval': 2
+    }
+}
 
 
 def solve_diverse_retrieval_qubo(
     query_embedding: np.ndarray,
     candidate_embeddings: np.ndarray,
     k: int,
-    alpha: float = 0.6,
-    penalty_multiplier: float = 2.0,
+    alpha: float = 0.05,
+    penalty: float = 1000.0,
     solver: str = 'orbit',
     solver_options: Optional[Dict[str, Any]] = None
 ) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
-    End-to-end QUBO solver for diverse retrieval.
+    Solve diverse retrieval as QUBO.
 
-    Pipeline:
-        1. Build QUBO matrix from embeddings
-        2. Select solver (orbit, gurobi, bruteforce)
-        3. Solve the problem
-        4. Extract selected indices
-        5. Enforce cardinality constraint if violated (for heuristic solvers)
+    Energy = alpha * s^T Q s - h^T s + P * (s^T 1 - k)^2
 
     Args:
-        query_embedding: Query vector (embedding_dim,)
-        candidate_embeddings: Candidate vectors (n_candidates, embedding_dim)
+        query_embedding: Query vector (d,)
+        candidate_embeddings: Candidate vectors (n, d)
         k: Number of items to select
-        alpha: Relevance weight (0.5-0.7), (1-alpha) = diversity weight
-        penalty_multiplier: Cardinality constraint penalty multiplier (default: 2.0)
-        solver: Name of the solver to use ('orbit', 'gurobi', 'bruteforce')
-        solver_options: Optional parameters for the chosen solver.
+        alpha: Diversity weight
+        penalty: Cardinality penalty
+        solver: 'orbit', 'bruteforce', or 'gurobi'
+        solver_options: Solver-specific options
 
     Returns:
-        selected_indices: Indices of selected items (k,)
-        metadata: Dictionary with timing, energy, constraint satisfaction info
+        selected_indices: Indices of selected items
+        metadata: Solver metadata
     """
     solver_options = solver_options or {}
-    
-    # --- 1. Build QUBO Problem ---
-    # The QUBO matrix `Q` is built with a penalty term to encourage Σxᵢ = k.
-    # This is used by heuristic solvers that don't support hard constraints.
-    # Exact solvers like Gurobi will use a hard constraint instead.
-    problem = QUBOProblem(query_embedding, candidate_embeddings, alpha, k, penalty_multiplier)
-    Q = problem.build_qubo_matrix()
 
-    # --- 2. Solve with the selected solver ---
-    result = None
+    # Compute similarities
+    h, Q = compute_cosine_similarities(query_embedding, candidate_embeddings)
+
+    # Solve with selected solver
     if solver == 'orbit':
-        # ORBIT solves an Ising model, so we convert
-        J, h, offset = IsingConverter.qubo_to_ising(Q)
-        orbit_solver = ORBITSolver(**solver_options)
-        result = orbit_solver.solve(J, h)
-        # Add offset back to compare energy with other QUBO solvers
-        result['energy'] += offset
+        # Get preset or custom params
+        preset = solver_options.pop('preset', 'balanced')
+        params = ORBIT_PRESETS.get(preset, ORBIT_PRESETS['balanced']).copy()
+        params.update(solver_options)
+
+        solution, metadata = solve_with_orbit(Q, h, k, alpha, penalty, **params)
 
     elif solver == 'bruteforce':
-        brute_solver = BruteForceSolver(**solver_options)
-        # Note: BruteForceSolver doesn't use the penalized Q, it enforces `k` directly.
-        # For a fair energy comparison, we should re-calculate energy with the same Q.
-        # However, its own energy calculation is the true unpenalized objective.
-        # For now, we accept its reported energy.
-        result = brute_solver.solve(Q, k)
-        
+        solution, metadata = solve_with_bruteforce(Q, h, k, alpha, penalty)
+
     elif solver == 'gurobi':
-        gurobi_solver = GurobiSolver(**solver_options)
-        # Gurobi uses a hard constraint, so the penalty term in Q is not strictly needed
-        # but we use the same Q for better comparability of the objective value.
-        result = gurobi_solver.solve(Q, k)
+        time_limit = solver_options.get('time_limit', 10)
+        solution, metadata = solve_with_gurobi(Q, h, k, alpha, penalty, time_limit)
 
     else:
-        raise ValueError(f"Unknown solver: {solver}. Choose from 'orbit', 'gurobi', 'bruteforce'.")
+        raise ValueError(f"Unknown solver: {solver}")
 
-    # --- 3. Process Solver Result ---
-    binary_sol = result['binary_solution']
-    selected_indices = np.where(binary_sol == 1)[0]
-    
-    # --- 4. Handle Constraint Violations (for heuristic solvers) ---
-    constraint_satisfied = (len(selected_indices) == k)
-    adjusted_solution = binary_sol.copy()
+    # Get selected indices
+    selected_indices = np.where(solution == 1)[0]
 
-    # Only apply greedy adjustment for inexact solvers like 'orbit'
-    if solver == 'orbit' and not constraint_satisfied:
-        selected_indices = _adjust_cardinality(
-            binary_sol, k, query_embedding, candidate_embeddings
-        )
-        # Update solution vector after adjustment
-        adjusted_solution = np.zeros_like(binary_sol)
-        adjusted_solution[selected_indices] = 1
+    # Compute metrics
+    n_selected = len(selected_indices)
+    if n_selected > 0:
+        avg_relevance = float(np.mean(h[selected_indices]))
 
-    # --- 5. Compute Final Metrics ---
-    quality_metrics = problem.compute_solution_quality(adjusted_solution, Q)
+        if n_selected > 1:
+            selected_sims = Q[selected_indices][:, selected_indices]
+            intra_sim = (np.sum(selected_sims) - n_selected) / (n_selected * (n_selected - 1))
+        else:
+            intra_sim = 0.0
+    else:
+        avg_relevance = intra_sim = 0.0
 
-    metadata = {
-        'solver': solver,
-        'execution_time': result['execution_time'],
-        'constraint_satisfied_by_solver': constraint_satisfied,
-        'final_k': len(selected_indices),
+    metadata.update({
         'alpha': alpha,
-        'penalty_multiplier': penalty_multiplier,
+        'penalty': penalty,
         'n_candidates': len(candidate_embeddings),
-        'solution_quality': quality_metrics,
-        **solver_options
-    }
+        'solution_quality': {
+            'n_selected': n_selected,
+            'constraint_violation': abs(n_selected - k),
+            'avg_relevance': avg_relevance,
+            'intra_list_similarity': float(intra_sim)
+        }
+    })
 
     return selected_indices, metadata
-
-
-
-def _adjust_cardinality(
-    binary_sol: np.ndarray,
-    target_k: int,
-    query_emb: np.ndarray,
-    candidate_embs: np.ndarray
-) -> np.ndarray:
-    """
-    Adjust solution to satisfy cardinality constraint via greedy selection.
-
-    Strategy:
-        - If too many selected: Remove lowest query similarity items
-        - If too few selected: Add highest query similarity items from unselected
-
-    Args:
-        binary_sol: Current binary solution
-        target_k: Desired number of selections
-        query_emb: Query embedding
-        candidate_embs: Candidate embeddings
-
-    Returns:
-        Adjusted indices (exactly target_k items)
-    """
-    selected = np.where(binary_sol == 1)[0]
-
-    if len(selected) > target_k:
-        # Remove lowest relevance items
-        query_sims = _compute_cosine_similarities(
-            query_emb, candidate_embs[selected]
-        )
-        keep_indices = np.argsort(query_sims)[-target_k:]
-        return selected[keep_indices]
-
-    elif len(selected) < target_k:
-        # Add highest relevance items from unselected
-        unselected = np.where(binary_sol == 0)[0]
-        query_sims = _compute_cosine_similarities(
-            query_emb, candidate_embs[unselected]
-        )
-        n_to_add = target_k - len(selected)
-        add_indices = unselected[np.argsort(query_sims)[-n_to_add:]]
-        return np.concatenate([selected, add_indices])
-
-    return selected
-
-
-def _compute_cosine_similarities(
-    query_emb: np.ndarray,
-    candidate_embs: np.ndarray
-) -> np.ndarray:
-    """
-    Compute cosine similarity between query and candidates.
-
-    Args:
-        query_emb: Query vector (d,)
-        candidate_embs: Candidate vectors (n, d)
-
-    Returns:
-        Similarities (n,)
-    """
-    query_norm = query_emb / np.linalg.norm(query_emb)
-    cand_norms = candidate_embs / np.linalg.norm(
-        candidate_embs, axis=1, keepdims=True
-    )
-    return np.dot(cand_norms, query_norm)
-
-
-def _evaluate_qubo_energy(Q: np.ndarray, x: np.ndarray) -> float:
-    """
-    Evaluate QUBO objective: x^T Q x
-
-    Args:
-        Q: QUBO matrix
-        x: Binary solution vector
-
-    Returns:
-        QUBO energy (objective value)
-    """
-    return float(x @ Q @ x)

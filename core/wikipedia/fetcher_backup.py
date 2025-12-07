@@ -1,7 +1,6 @@
 """
-Wikipedia Fetcher with caching and reliability features - FIXED VERSION.
+Wikipedia Fetcher with caching and reliability features.
 Handles article fetching with retry logic, validation, and local caching.
-NOW PROPERLY EXTRACTS REAL SECTION NAMES.
 """
 
 import json
@@ -67,7 +66,6 @@ class WikipediaFetcher:
     - Retry logic with exponential backoff
     - Article validation (minimum section requirements)
     - Paragraph extraction and filtering
-    - PROPERLY EXTRACTS REAL SECTION NAMES
     """
 
     def __init__(self, cache_dir: str = "./cache"):
@@ -87,8 +85,7 @@ class WikipediaFetcher:
         self.ignore_sections = {
             'see also', 'references', 'external links', 'notes',
             'further reading', 'bibliography', 'gallery', 'sources',
-            'citations', 'footnotes', 'works cited', 'notes and references',
-            'references and notes', 'external links'
+            'citations', 'footnotes', 'works cited'
         }
 
     def _get_cache_path(self, title: str) -> Path:
@@ -136,72 +133,56 @@ class WikipediaFetcher:
             self.min_paragraph_chars <= para_len <= self.max_paragraph_chars
             and not paragraph.startswith('[')  # Skip citation markers
             and not paragraph.startswith('!')  # Skip info boxes
-            and not paragraph.startswith('{')  # Skip templates
         )
 
     def _extract_sections(self, page) -> List[WikiSection]:
         """
-        Extract sections with REAL NAMES from Wikipedia page.
-
-        Uses the page.sections property which gives actual section titles.
+        Extract sections with paragraphs from Wikipedia page.
+        Uses the page content to split by section headers.
         """
         sections = []
-
-        # The Wikipedia library provides sections as a list of section titles
-        # But we need to parse content to get paragraphs for each section
         content = page.content
 
-        # Split by section headers (== Section Name ==)
-        import re
-
-        # Pattern to match section headers at any level
-        # == Title == or === Subtitle === etc.
-        section_pattern = r'^(={2,})\s*(.+?)\s*\1\s*$'
-
+        # Split content into sections by looking for section markers
+        # Wikipedia pages typically have sections separated by == markers in the raw text
         lines = content.split('\n')
-        current_section_title = None
+
+        current_section = None
         current_paragraphs = []
 
         for line in lines:
-            # Check if this is a section header
-            match = re.match(section_pattern, line.strip())
-            if match:
-                # Save previous section if it exists
-                if current_section_title and current_paragraphs:
-                    # Filter to only keep good paragraphs
-                    valid_paras = [p for p in current_paragraphs if self._filter_paragraph(p)]
-                    if valid_paras:
-                        # Skip ignored sections
-                        if current_section_title.lower() not in self.ignore_sections:
-                            sections.append(WikiSection(
-                                title=current_section_title,
-                                paragraphs=valid_paras,
-                                level=len(match.group(1))  # Number of = signs
-                            ))
+            line = line.strip()
+            if not line:
+                continue
 
-                # Start new section
-                current_section_title = match.group(2).strip()
-                current_paragraphs = []
-            else:
-                # This is content, not a header
-                line = line.strip()
-                if line and len(line) >= 50:  # Minimum line length
+            # Check if it's a section header (simplified heuristic)
+            # In practice, wikipedia-api gives us sections, but we'll parse content
+            if len(line) > 0 and not line.startswith('['):
+                # This is content, add to current paragraphs
+                if self._filter_paragraph(line):
                     current_paragraphs.append(line)
 
-        # Don't forget the last section
-        if current_section_title and current_paragraphs:
-            valid_paras = [p for p in current_paragraphs if self._filter_paragraph(p)]
-            if valid_paras and current_section_title.lower() not in self.ignore_sections:
+        # Fallback: if section parsing doesn't work well, use the simpler approach
+        # Split content by double newlines to get paragraphs
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        valid_paragraphs = [p for p in paragraphs if self._filter_paragraph(p)]
+
+        # Group paragraphs into pseudo-sections based on semantic breaks
+        # For now, create sections of 5-10 paragraphs each
+        section_size = 7
+        for i in range(0, len(valid_paragraphs), section_size):
+            section_paras = valid_paragraphs[i:i+section_size]
+            if len(section_paras) >= 3:  # Minimum 3 paragraphs per section
                 sections.append(WikiSection(
-                    title=current_section_title,
-                    paragraphs=valid_paras,
+                    title=f"Section {i//section_size + 1}",
+                    paragraphs=section_paras,
                     level=2
                 ))
 
         return sections
 
     def fetch_article(
-        self,
+        self, 
         title: str,
         use_cache: bool = True,
         max_retries: int = 3
@@ -234,7 +215,7 @@ class WikipediaFetcher:
                 # Get the page
                 page = wikipedia.page(search_results[0], auto_suggest=False)
 
-                # Extract sections with REAL section names
+                # Extract sections
                 sections = self._extract_sections(page)
 
                 # Validate article quality
@@ -313,3 +294,4 @@ class WikipediaFetcher:
             'total_paragraphs': total_paragraphs,
             'avg_paragraphs_per_section': total_paragraphs / len(article.sections) if article.sections else 0
         }
+

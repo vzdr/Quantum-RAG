@@ -87,27 +87,25 @@ def compute_qubo_energy(
     query_similarities: np.ndarray,
     selected_indices: List[int],
     similarity_matrix: np.ndarray,
-    alpha: float = 0.7,
-    beta: float = 1.0,
+    alpha: float = 0.05,
     K: int = 10,
-    penalty: float = 100.0
+    penalty: float = 1000.0
 ) -> float:
     """
     Compute the QUBO energy for a given selection of documents.
 
     Energy formula:
-        E(x) = -α · Σᵢ S(q,dᵢ)·xᵢ           (relevance: maximize)
-             + β · Σᵢ<ⱼ S(dᵢ,dⱼ)·xᵢ·xⱼ      (diversity: minimize redundancy)
+        E(x) = -Σᵢ S(q,dᵢ)·xᵢ                (relevance: maximize)
+             + α · Σᵢ<ⱼ S(dᵢ,dⱼ)·xᵢ·xⱼ       (diversity: minimize redundancy)
              + P · (Σᵢ xᵢ - K)²              (constraint: exactly K docs)
 
     Args:
         query_similarities: Similarities between query and all documents
         selected_indices: Indices of selected documents
         similarity_matrix: Pairwise document similarities
-        alpha: Relevance weight
-        beta: Diversity penalty weight
+        alpha: Diversity penalty weight (default: 0.05)
         K: Target number of documents
-        penalty: Constraint violation penalty
+        penalty: Constraint violation penalty (default: 1000.0)
 
     Returns:
         Total energy value (lower is better)
@@ -118,14 +116,14 @@ def compute_qubo_energy(
     x[selected_indices] = 1
 
     # Relevance term (negative because we want to maximize)
-    relevance_term = -alpha * np.sum(query_similarities * x)
+    relevance_term = -np.sum(query_similarities * x)
 
     # Diversity term (penalty for similar documents)
     diversity_term = 0.0
     for i in selected_indices:
         for j in selected_indices:
             if i < j:
-                diversity_term += beta * similarity_matrix[i, j]
+                diversity_term += alpha * similarity_matrix[i, j]
 
     # Cardinality constraint (penalty for not selecting exactly K docs)
     num_selected = len(selected_indices)

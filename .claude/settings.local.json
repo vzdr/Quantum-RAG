@@ -20,7 +20,12 @@
       "Bash(C:/Python314/Scripts/pip.exe install:*)",
       "Bash(cat:*)",
       "Bash(sqlite3:*)",
-      "Bash(timeout 5 echo:*)"
+      "Bash(timeout 5 echo:*)",
+      "Bash(python3:*)",
+      "Bash(timeout 60 python:*)",
+      "Bash(venvScriptspython.exe experimentsexp_1_1_poisoned_stress_test.py --num-prompts 1)",
+      "Bash(\"venv/Scripts/python.exe\" experiments/exp_1_1_poisoned_stress_test.py --num-prompts 1)",
+      "Bash(\"venv/Scripts/python.exe\":*)"
     ],
     "deny": [],
     "ask": []
