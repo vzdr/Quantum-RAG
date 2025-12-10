@@ -1,4 +1,5 @@
 """RAG System Configuration."""
+import torch
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -9,6 +10,7 @@ class RAGConfig:
     Global configuration for the RAG system.
 
     Attributes:
+        dataset_type: Type of dataset ('medical' or 'wikipedia')
         chunk_size: Number of characters per chunk (100-2000)
         chunk_overlap: Number of overlapping characters between chunks (0-200)
         chunking_strategy: Strategy for chunking ('fixed', 'sentence', 'paragraph')
@@ -25,6 +27,9 @@ class RAGConfig:
         system_prompt: System prompt for the LLM
     """
 
+    # Dataset configuration
+    dataset_type: str = "medical"  # medical or wikipedia
+
     # Chunking parameters
     chunk_size: int = 500
     chunk_overlap: int = 50
@@ -33,11 +38,11 @@ class RAGConfig:
     # Embedding parameters
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_batch_size: int = 32
-    embedding_device: str = "cpu"
+    embedding_device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Vector store parameters
     collection_name: str = "rag_collection"
-    persist_directory: str = "./chroma_db"
+    persist_directory: str = "./data/vector_dbs"
 
     # Retrieval parameters
     top_k: int = 5
@@ -56,6 +61,7 @@ Always be accurate and cite the relevant parts of the context in your answer."""
     def to_dict(self) -> dict:
         """Convert config to dictionary."""
         return {
+            'dataset_type': self.dataset_type,
             'chunk_size': self.chunk_size,
             'chunk_overlap': self.chunk_overlap,
             'chunking_strategy': self.chunking_strategy,

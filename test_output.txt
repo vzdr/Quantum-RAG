@@ -1,0 +1,27 @@
+================================================================================
+EXPERIMENT 1.1: POISONED STRESS TEST
+================================================================================
+Testing with 1 prompts (use --num-prompts 100 for full run)
+================================================================================
+Loaded 5600 chunks
+Loaded 5600 embeddings
+
+Redundancy Level 0: Testing 1 prompts (out of 100 total)
+Level 0:   0%|          | 0/1 [00:00<?, ?prompt/s]Level 0:   0%|          | 0/1 [00:00<?, ?prompt/s]
+
+====================================================================================================
+DETAILED OUTPUT FOR FIRST PROMPT (Redundancy Level 0)
+====================================================================================================
+Traceback (most recent call last):
+  File "C:\Users\samca\Documents\Competitions\Quantum-RAG-Integrated\experiments\exp_1_1_poisoned_stress_test.py", line 479, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\samca\Documents\Competitions\Quantum-RAG-Integrated\experiments\exp_1_1_poisoned_stress_test.py", line 432, in main
+    results = run_retrieval_comparison(chunks, embeddings_dict, level, k=5, num_prompts=args.num_prompts)
+  File "C:\Users\samca\Documents\Competitions\Quantum-RAG-Integrated\experiments\exp_1_1_poisoned_stress_test.py", line 210, in run_retrieval_comparison
+    print(f"\n\U0001f4dd PROMPT TEXT:")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\samca\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4dd' in position 2: character maps to <undefined>

@@ -27,9 +27,6 @@ wheels/
 # Jupyter Notebook
 .ipynb_checkpoints/
 
-# Vector database
-chroma_db/
-
 # IDE
 .idea/
 .vscode/
@@ -43,5 +40,11 @@ Thumbs.db
 
 # Virtual environments
 venv/
-env/
+.env/
 .venv/
+
+# Large data files
+data/
+
+# Claude
+.claude/

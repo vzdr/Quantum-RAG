@@ -303,7 +303,7 @@ def main():
     args = parser.parse_args()
 
     # Setup paths
-    base_dir = Path("data/medical_diagnosis/strategic")
+    base_dir = Path("data/medical/raw/strategic")
     scenario_dir = base_dir / args.scenario
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

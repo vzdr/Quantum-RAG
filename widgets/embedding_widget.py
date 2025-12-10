@@ -1,8 +1,4 @@
-"""
-Embedding Widget - Phase A, Steps 3-4 UI
-
-Interactive embedding generation and vector store configuration.
-"""
+import torch
 from typing import List, Dict, Any, Callable, Optional
 
 import ipywidgets as widgets
@@ -72,7 +68,7 @@ class EmbeddingWidget:
         # Device selection
         self.device_toggle = widgets.ToggleButtons(
             options=['cpu', 'cuda'],
-            value='cpu',
+            value='cuda' if torch.cuda.is_available() else 'cpu',
             description='Device:',
             style={'description_width': '100px'}
         )
@@ -267,3 +263,4 @@ class EmbeddingWidget:
 
         display(layout)
         return layout
+
