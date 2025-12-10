@@ -103,7 +103,6 @@ export async function compareMethodsAPI(
       lambda_param: lambdaParam,
       solver_preset: solverPreset,
     }),
-    signal: AbortSignal.timeout(30000), // 30 second timeout for QUBO
   });
 
   if (!response.ok) {
