@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Search, Loader2, RotateCcw, Check, X, Minus } from 'lucide-react';
 import { compareMethodsAPI, type CompareResponse } from '@/lib/api';
 import { DEMO_QUERIES } from '@/lib/mockData';
+import ParameterControls from '@/components/demo/ParameterControls';
 
 // Scenario configurations
 const scenarios: Record<string, { title: string; description: string }> = {
@@ -34,21 +35,51 @@ export default function ScenarioDemoPage({ params }: PageProps) {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<CompareResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>('');
+  const [startTime, setStartTime] = useState<number>(0);
+
+  // Parameter state (matching notebook defaults)
+  const [alpha, setAlpha] = useState(0.02);
+  const [penalty, setPenalty] = useState(1000.0);
+  const [lambdaParam, setLambdaParam] = useState(0.5);
+  const [solverPreset, setSolverPreset] = useState('balanced');
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
 
     setIsLoading(true);
+    setError(null);
+    setStartTime(Date.now());
+    setProgress('Initializing retrieval methods...');
+
     try {
-      const response = await compareMethodsAPI(query.trim(), scenario, 5, true);
+      // Simulate progress updates
+      setTimeout(() => setProgress('Running Top-K baseline (~100ms)...'), 100);
+      setTimeout(() => setProgress('Running MMR greedy selection (~200ms)...'), 300);
+      setTimeout(() => setProgress(`Running QUBO with ORBIT solver (preset: ${solverPreset}, ~${solverPreset === 'fast' ? '1-2s' : solverPreset === 'balanced' ? '5-10s' : '10-15s'})...`), 600);
+
+      const response = await compareMethodsAPI(
+        query.trim(),
+        scenario,
+        5,
+        true,
+        alpha,
+        penalty,
+        lambdaParam,
+        solverPreset
+      );
       setResults(response);
+      setProgress('');
     } catch (error) {
       console.error('Comparison failed:', error);
+      setError(error instanceof Error ? error.message : 'Comparison failed');
+      setProgress('');
     } finally {
       setIsLoading(false);
     }
-  }, [query, scenario, isLoading]);
+  }, [query, scenario, isLoading, alpha, penalty, lambdaParam, solverPreset]);
 
   const handleSuggestion = useCallback((suggestion: string) => {
     setQuery(suggestion);
@@ -58,6 +89,21 @@ export default function ScenarioDemoPage({ params }: PageProps) {
     setResults(null);
     setQuery('');
   }, []);
+
+  // Update elapsed time display
+  const [elapsedTime, setElapsedTime] = useState(0);
+  useEffect(() => {
+    if (!isLoading) {
+      setElapsedTime(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isLoading, startTime]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -89,6 +135,28 @@ export default function ScenarioDemoPage({ params }: PageProps) {
               <h1 className="text-2xl font-bold text-foreground mb-2">{config.title}</h1>
               <p className="text-muted-foreground">{config.description}</p>
             </div>
+
+            {/* Parameter Controls */}
+            <ParameterControls
+              alpha={alpha}
+              penalty={penalty}
+              lambdaParam={lambdaParam}
+              solverPreset={solverPreset}
+              onAlphaChange={setAlpha}
+              onPenaltyChange={setPenalty}
+              onLambdaChange={setLambdaParam}
+              onPresetChange={setSolverPreset}
+            />
+
+            {/* Error Display */}
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800 font-medium">Error: {error}</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Ensure backend is running at http://localhost:8000
+                </p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="mb-6">
               <div className="relative">
@@ -135,8 +203,33 @@ export default function ScenarioDemoPage({ params }: PageProps) {
         {/* Loading State */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Running comparison...</p>
+            <Loader2 className="w-12 h-12 animate-spin text-accent mb-6" />
+            <div className="text-center space-y-3">
+              <p className="text-lg font-medium text-foreground">{progress || 'Running comparison...'}</p>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                  <span>Elapsed: {elapsedTime}s</span>
+                </div>
+              </div>
+              <div className="mt-6 p-4 bg-muted/30 rounded-lg max-w-md">
+                <p className="text-xs text-muted-foreground font-medium mb-2">Running Methods:</p>
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${elapsedTime < 1 ? 'bg-accent animate-pulse' : 'bg-green-500'}`}></div>
+                    <span>Top-K (baseline) - ~100ms</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${elapsedTime >= 1 && elapsedTime < 2 ? 'bg-accent animate-pulse' : elapsedTime >= 2 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span>MMR (greedy) - ~200ms</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${elapsedTime >= 2 ? 'bg-accent animate-pulse' : 'bg-gray-300'}`}></div>
+                    <span>QUBO (ORBIT) - ~{solverPreset === 'fast' ? '1-2s' : solverPreset === 'balanced' ? '5-10s' : '10-15s'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

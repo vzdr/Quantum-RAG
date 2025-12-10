@@ -50,6 +50,12 @@ class CompareRequest(BaseModel):
     k: int = Field(5, description="Number of results to retrieve", ge=1, le=20)
     include_llm: bool = Field(True, description="Whether to generate LLM responses")
 
+    # Configurable retrieval parameters (notebook defaults)
+    alpha: float = Field(0.02, description="QUBO diversity weight (0=relevance only, 1=max diversity)", ge=0.0, le=1.0)
+    penalty: float = Field(1000.0, description="QUBO cardinality penalty (enforces exactly k selections)", ge=0.0, le=10000.0)
+    lambda_param: float = Field(0.5, description="MMR lambda parameter (0=diversity, 1=relevance)", ge=0.0, le=1.0)
+    solver_preset: str = Field("balanced", description="ORBIT solver preset (fast/balanced/quality)")
+
 
 class CompareResponse(BaseModel):
     """Response from /api/compare endpoint."""

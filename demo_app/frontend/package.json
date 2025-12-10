@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:backend": "cd ../.. && .venv\\Scripts\\python.exe -m uvicorn demo_app.backend.main:app --reload",
+    "all": "concurrently \"npm run dev:backend\" \"npm run dev\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -26,6 +28,7 @@
     "@types/react-dom": "^18.2.18",
     "@types/react-plotly.js": "^2.6.3",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"

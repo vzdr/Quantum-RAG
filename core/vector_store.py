@@ -126,6 +126,65 @@ class VectorStore:
 
         return total_added
 
+    def add_with_embeddings(self, chunks_with_embeddings: List[Dict[str, Any]], batch_size: int = 500) -> int:
+        """
+        Add chunks that already have embeddings computed.
+        Used for datasets with pre-computed embeddings (e.g., Wikipedia JSONL+NPZ).
+
+        Args:
+            chunks_with_embeddings: List of dicts with:
+                - id: chunk ID (str)
+                - text: chunk text (str)
+                - embedding: numpy array or list (will be converted to list)
+                - metadata: metadata dict
+            batch_size: Number of chunks to add per batch (default 500)
+
+        Returns:
+            Number of chunks added
+        """
+        if not chunks_with_embeddings:
+            return 0
+
+        total_added = 0
+
+        # Process in batches to avoid ChromaDB limits
+        for i in range(0, len(chunks_with_embeddings), batch_size):
+            batch = chunks_with_embeddings[i:i + batch_size]
+
+            ids = []
+            embeddings = []
+            documents = []
+            metadatas = []
+
+            for chunk_dict in batch:
+                chunk_id = chunk_dict['id']
+                text = chunk_dict['text']
+                embedding = chunk_dict['embedding']
+                metadata = chunk_dict['metadata']
+
+                ids.append(chunk_id)
+                # Convert numpy array to list if needed
+                if isinstance(embedding, np.ndarray):
+                    embeddings.append(embedding.tolist())
+                else:
+                    embeddings.append(embedding)
+                documents.append(text)
+                # Ensure all metadata values are strings for ChromaDB
+                metadatas.append({k: str(v) if not isinstance(v, (int, float, bool)) else v
+                                  for k, v in metadata.items()})
+
+            # Add batch to ChromaDB
+            self.collection.add(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=metadatas
+            )
+
+            total_added += len(ids)
+
+        return total_added
+
     def search(
         self,
         query_embedding: np.ndarray,

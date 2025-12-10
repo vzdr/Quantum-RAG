@@ -1,9 +1,6 @@
 /**
  * API client for Quantum-RAG Demo backend
- * Includes fallback to mock data when backend is unavailable
  */
-
-import { getMockCompareResponse } from './mockData';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -79,65 +76,55 @@ export async function checkBackendHealth(): Promise<boolean> {
 }
 
 /**
- * Compare all three retrieval methods
- * Falls back to mock data if backend is unavailable
+ * Compare all three retrieval methods with configurable parameters
  */
 export async function compareMethodsAPI(
   query: string,
   dataset: string = 'medical',
   k: number = 5,
-  includeLlm: boolean = true
+  includeLlm: boolean = true,
+  alpha: number = 0.02,
+  penalty: number = 1000.0,
+  lambdaParam: number = 0.5,
+  solverPreset: string = 'balanced'
 ): Promise<CompareResponse> {
-  try {
-    const response = await fetch(`${API_BASE}/api/compare`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        dataset,
-        k,
-        include_llm: includeLlm,
-      }),
-      signal: AbortSignal.timeout(30000), // 30 second timeout for QUBO
-    });
+  const response = await fetch(`${API_BASE}/api/compare`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query,
+      dataset,
+      k,
+      include_llm: includeLlm,
+      alpha,
+      penalty,
+      lambda_param: lambdaParam,
+      solver_preset: solverPreset,
+    }),
+    signal: AbortSignal.timeout(30000), // 30 second timeout for QUBO
+  });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Comparison failed');
-    }
-
-    return response.json();
-  } catch (error) {
-    console.warn('Backend unavailable, using mock data:', error);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return getMockCompareResponse(query, dataset);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Comparison failed');
   }
+
+  return response.json();
 }
 
 /**
  * Get available datasets
  */
 export async function getDatasetsAPI(): Promise<{ datasets: DatasetInfo[] }> {
-  try {
-    const response = await fetch(`${API_BASE}/api/datasets`);
+  const response = await fetch(`${API_BASE}/api/datasets`);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch datasets');
-    }
-
-    return response.json();
-  } catch {
-    // Return mock datasets
-    return {
-      datasets: [
-        { name: 'medical', total_chunks: 210, total_clusters: 5, description: 'Medical diagnosis' },
-        { name: 'legal', total_chunks: 150, total_clusters: 5, description: 'Legal case law' },
-      ],
-    };
+  if (!response.ok) {
+    throw new Error('Failed to fetch datasets');
   }
+
+  return response.json();
 }
 
 /**

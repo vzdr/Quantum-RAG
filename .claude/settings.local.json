@@ -28,7 +28,9 @@
       "Bash(\"venv/Scripts/python.exe\":*)",
       "Bash(\"venv/Scripts/python.exe\" test_submission_notebook.py)",
       "Bash(\"venv/Scripts/python.exe\" -m pip list)",
-      "Bash(\"venv/Scripts/python.exe\" -m pip install gurobipy)"
+      "Bash(\"venv/Scripts/python.exe\" -m pip install gurobipy)",
+      "Bash(test:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

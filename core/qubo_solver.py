@@ -145,8 +145,14 @@ def solve_with_orbit(Q: np.ndarray, h: np.ndarray, k: int, alpha: float, P: floa
     """
     try:
         import orbit
-    except ImportError:
-        raise ImportError("ORBIT not installed")
+        print(f"DEBUG: ORBIT loaded from: {orbit.__file__}")
+        print(f"DEBUG: ORBIT version: {orbit.__version__}")
+        print(f"DEBUG: Has optimize_ising: {hasattr(orbit, 'optimize_ising')}")
+        if not hasattr(orbit, 'optimize_ising'):
+            print(f"DEBUG: Available attributes: {[a for a in dir(orbit) if not a.startswith('_')]}")
+            raise AttributeError("orbit.optimize_ising not found")
+    except ImportError as e:
+        raise ImportError(f"ORBIT not installed: {e}")
 
     n = len(h)
 

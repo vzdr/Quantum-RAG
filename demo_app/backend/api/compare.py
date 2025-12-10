@@ -31,12 +31,16 @@ async def compare_methods(request: CompareRequest) -> CompareResponse:
                 detail=f"Dataset '{request.dataset}' not available. Available: {available}"
             )
 
-        # Run comparison
+        # Run comparison with configurable parameters
         results = await retrieval_service.compare_methods(
             query=request.query,
             dataset=request.dataset,
             k=request.k,
             include_llm=request.include_llm,
+            alpha=request.alpha,
+            penalty=request.penalty,
+            lambda_param=request.lambda_param,
+            solver_preset=request.solver_preset,
         )
 
         # Get UMAP coordinates

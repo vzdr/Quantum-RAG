@@ -45,25 +45,26 @@ class RetrievalService:
     # Dataset configurations
     DATASETS = {
         "medical": {
-            "path": "data/medical_diagnosis",
-            "collection": "medical_demo",
-            "total_clusters": 14,
+            "path": "data/wikipedia",
+            "collection": "wikipedia_medical",
+            "total_clusters": 100,  # Wikipedia has ~100 unique article aspects
+            "loader": "wikipedia",  # Use Wikipedia JSONL+NPZ loader
         },
         "greedy_trap": {
             "path": "data/greedy_trap",
             "collection": "greedy_trap_demo",
-            "total_clusters": 5,
+            "total_clusters": 7,  # 7 symptom clusters
         },
         "legal": {
             "path": "data/legal_cases",
             "collection": "legal_demo",
-            "total_clusters": 5,
+            "total_clusters": 5,  # 5 legal categories
         },
     }
 
     def __init__(
         self,
-        embedding_model: str = "all-MiniLM-L6-v2",
+        embedding_model: str = "BAAI/bge-large-en-v1.5",  # 1024-dim to match Wikipedia dataset
         device: str = "cpu",
         persist_dir: str = "./demo_chroma_db",
     ):
@@ -125,6 +126,7 @@ class RetrievalService:
     def index_dataset(self, dataset: str, force_reindex: bool = False) -> int:
         """
         Index a dataset into the vector store.
+        Supports both standard document loading and Wikipedia JSONL+NPZ format.
 
         Args:
             dataset: Dataset name
@@ -152,11 +154,27 @@ class RetrievalService:
         if not data_path.exists():
             raise FileNotFoundError(f"Dataset path not found: {data_path}")
 
-        documents = DocumentLoader.load_directory(str(data_path))
-        chunker = TextChunker(chunk_size=500, overlap=50, strategy='sentence')
-        chunks = chunker.chunk_documents(documents)
-        embedded_chunks = self.embedder.embed_chunks(chunks)
-        vector_store.add(embedded_chunks)
+        # Use Wikipedia loader for special format
+        if config.get("loader") == "wikipedia":
+            from .dataset_loaders import (
+                load_wikipedia_dataset,
+                convert_wikipedia_to_chroma_format
+            )
+
+            print(f"Loading Wikipedia dataset from {data_path}...")
+            chunks, embeddings = load_wikipedia_dataset(data_path)
+            chroma_chunks = convert_wikipedia_to_chroma_format(chunks, embeddings)
+
+            # Add with pre-computed embeddings
+            vector_store.add_with_embeddings(chroma_chunks)
+            print(f"Indexed {vector_store.count} Wikipedia chunks")
+        else:
+            # Standard document loading pipeline
+            documents = DocumentLoader.load_directory(str(data_path))
+            chunker = TextChunker(chunk_size=500, overlap=50, strategy='sentence')
+            chunks = chunker.chunk_documents(documents)
+            embedded_chunks = self.embedder.embed_chunks(chunks)
+            vector_store.add(embedded_chunks)
 
         return vector_store.count
 
@@ -167,20 +185,26 @@ class RetrievalService:
         candidates: List[Dict[str, Any]],
         k: int,
         total_clusters: int,
+        # Configurable parameters with notebook defaults
+        alpha: float = 0.02,
+        penalty: float = 1000.0,
+        lambda_param: float = 0.5,
+        solver_preset: str = "balanced",
     ) -> Tuple[str, MethodResult]:
         """Run a single retrieval method and compute metrics."""
         start_time = time.perf_counter()
 
-        # Create strategy
+        # Create strategy with user-provided parameters
         if method == "topk":
             strategy = create_retrieval_strategy("naive")
         elif method == "mmr":
-            strategy = create_retrieval_strategy("mmr", lambda_param=0.5)
+            strategy = create_retrieval_strategy("mmr", lambda_param=lambda_param)
         elif method == "qubo":
             strategy = create_retrieval_strategy(
                 "qubo",
-                alpha=0.35,
-                solver_preset="fast"  # Use fast preset for demo responsiveness
+                alpha=alpha,
+                penalty=penalty,
+                solver_preset=solver_preset
             )
         else:
             raise ValueError(f"Unknown method: {method}")
@@ -252,15 +276,25 @@ class RetrievalService:
         dataset: str,
         k: int = 5,
         include_llm: bool = True,
+        # Configurable parameters with notebook defaults
+        alpha: float = 0.02,
+        penalty: float = 1000.0,
+        lambda_param: float = 0.5,
+        solver_preset: str = "balanced",
     ) -> Dict[str, Any]:
         """
         Run all three retrieval methods and compare results.
+        Now supports configurable parameters for QUBO and MMR.
 
         Args:
             query: User query
             dataset: Dataset to search
             k: Number of results per method
             include_llm: Whether to generate LLM responses
+            alpha: QUBO diversity weight (notebook default: 0.02)
+            penalty: QUBO cardinality penalty (notebook default: 1000.0)
+            lambda_param: MMR lambda parameter (default: 0.5)
+            solver_preset: ORBIT solver preset (notebook default: "balanced")
 
         Returns:
             Dictionary with results from all methods
@@ -278,7 +312,7 @@ class RetrievalService:
         num_candidates = min(k * 3, vector_store.count)
         candidates = vector_store.search(query_embedding, k=num_candidates)
 
-        # Run all methods in parallel using thread pool
+        # Run all methods in parallel using thread pool with parameters
         loop = asyncio.get_event_loop()
         tasks = []
         for method in ["topk", "mmr", "qubo"]:
@@ -290,6 +324,10 @@ class RetrievalService:
                 candidates,
                 k,
                 config["total_clusters"],
+                alpha,  # Pass parameter
+                penalty,  # Pass parameter
+                lambda_param,  # Pass parameter
+                solver_preset,  # Pass parameter
             )
             tasks.append(task)
 

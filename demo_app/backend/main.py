@@ -15,9 +15,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent paths for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from api import compare_router, retrieve_router, embeddings_router
-from models.schemas import HealthResponse
-from services.retrieval_service import get_retrieval_service
+from demo_app.backend.api import compare_router, retrieve_router, embeddings_router
+from demo_app.backend.models.schemas import HealthResponse
+from demo_app.backend.services.retrieval_service import get_retrieval_service
 
 
 @asynccontextmanager
