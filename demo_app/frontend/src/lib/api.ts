@@ -84,6 +84,7 @@ export async function compareMethodsAPI(
   k: number = 5,
   includeLlm: boolean = true,
   alpha: number = 0.15,
+  beta: float = 0.4,
   penalty: number = 1000.0,
   lambdaParam: number = 0.5,
   solverPreset: string = 'balanced'
@@ -99,6 +100,7 @@ export async function compareMethodsAPI(
       k,
       include_llm: includeLlm,
       alpha,
+      beta,
       penalty,
       lambda_param: lambdaParam,
       solver_preset: solverPreset,

@@ -61,9 +61,10 @@ class MMRRetrieval(BaseRetrievalStrategy):
 
 class QUBORetrieval(BaseRetrievalStrategy):
     """QUBO-based retrieval using Gurobi or other solvers."""
-    def __init__(self, alpha: float = 0.04, penalty: float = 10.0, solver: str = 'gurobi'):
+    def __init__(self, alpha: float = 0.04, penalty: float = 10.0, beta: float = 0.4, solver: str = 'gurobi'):
         self.alpha = alpha
         self.penalty = penalty
+        self.beta = beta
         self.solver = solver
 
     def retrieve(self, query_embedding: np.ndarray, candidates: List[Dict[str, Any]], k: int) -> List[RetrievalResult]:
@@ -81,6 +82,9 @@ class QUBORetrieval(BaseRetrievalStrategy):
         n = len(candidates)
         pairwise_sim = compute_pairwise_similarities(candidate_embeddings)
         
+        # Apply the beta threshold
+        thresholded_pairwise_sim = np.where(pairwise_sim >= self.beta, pairwise_sim, 0)
+        
         with gp.Env(empty=True) as env:
             env.setParam('OutputFlag', 0)
             env.start()
@@ -88,7 +92,7 @@ class QUBORetrieval(BaseRetrievalStrategy):
                 x = model.addMVar(shape=n, vtype=GRB.BINARY, name="x")
                 
                 relevance_term = -query_sims @ x
-                diversity_term = self.alpha * (x @ (pairwise_sim - np.identity(n)) @ x)
+                diversity_term = self.alpha * (x @ (thresholded_pairwise_sim - np.identity(n)) @ x)
                 
                 model.setObjective(relevance_term + diversity_term, GRB.MINIMIZE)
                 model.addConstr(x.sum() == k, "cardinality")

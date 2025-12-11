@@ -45,6 +45,7 @@ export default function ScenarioDemoPage({ params }: PageProps) {
 
   // Parameter state - alpha increased for better diversity demonstration
   const [alpha, setAlpha] = useState(0.15);
+  const [beta, setBeta] = useState(0.4);
   const [penalty, setPenalty] = useState(1000.0);
   const [lambdaParam, setLambdaParam] = useState(0.5);
   const [solverPreset, setSolverPreset] = useState('balanced');
@@ -70,6 +71,7 @@ export default function ScenarioDemoPage({ params }: PageProps) {
         5,
         true,
         alpha,
+        beta,
         penalty,
         lambdaParam,
         solverPreset
@@ -83,7 +85,7 @@ export default function ScenarioDemoPage({ params }: PageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [query, scenario, isLoading, alpha, penalty, lambdaParam, solverPreset]);
+  }, [query, scenario, isLoading, alpha, beta, penalty, lambdaParam, solverPreset]);
 
   const handleSuggestion = useCallback((suggestion: string) => {
     setQuery(suggestion);
@@ -143,10 +145,12 @@ export default function ScenarioDemoPage({ params }: PageProps) {
             {/* Parameter Controls */}
             <ParameterControls
               alpha={alpha}
+              beta={beta}
               penalty={penalty}
               lambdaParam={lambdaParam}
               solverPreset={solverPreset}
               onAlphaChange={setAlpha}
+              onBetaChange={setBeta}
               onPenaltyChange={setPenalty}
               onLambdaChange={setLambdaParam}
               onPresetChange={setSolverPreset}

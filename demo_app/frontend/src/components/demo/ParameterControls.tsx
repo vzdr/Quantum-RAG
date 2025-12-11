@@ -5,10 +5,12 @@ import { Settings, Info } from 'lucide-react';
 
 interface ParameterControlsProps {
   alpha: number;
+  beta: number;
   penalty: number;
   lambdaParam: number;
   solverPreset: string;
   onAlphaChange: (value: number) => void;
+  onBetaChange: (value: number) => void;
   onPenaltyChange: (value: number) => void;
   onLambdaChange: (value: number) => void;
   onPresetChange: (value: string) => void;
@@ -16,10 +18,12 @@ interface ParameterControlsProps {
 
 export default function ParameterControls({
   alpha,
+  beta,
   penalty,
   lambdaParam,
   solverPreset,
   onAlphaChange,
+  onBetaChange,
   onPenaltyChange,
   onLambdaChange,
   onPresetChange,
@@ -64,11 +68,34 @@ export default function ParameterControls({
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
             />
             <p className="text-xs text-gray-600 mt-1">
-              Controls diversity emphasis in QUBO. Default 0.15 provides moderate diversity boost.
-              Higher = more diversity, lower = more relevance. Range: 0.0-0.5.
+              Controls diversity emphasis in QUBO. Higher = more diversity. Range: 0.0-0.5.
             </p>
           </div>
 
+          {/* Beta - QUBO Similarity Threshold */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <label className="text-sm font-medium text-gray-900">
+                Beta (QUBO Threshold)
+              </label>
+              <span className="ml-auto text-sm font-mono text-gray-600">
+                {beta.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={beta}
+              onChange={(e) => onBetaChange(parseFloat(e.target.value))}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
+            />
+            <p className="text-xs text-gray-600 mt-1">
+              Similarity threshold. Only pairs with similarity > beta are penalized. Range: 0.0-1.0.
+            </p>
+          </div>
+          
           {/* Penalty - QUBO Cardinality Constraint */}
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -89,8 +116,7 @@ export default function ParameterControls({
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
             />
             <p className="text-xs text-gray-600 mt-1">
-              Enforces selection of exactly k documents. Notebook uses 1000.
-              Too low = wrong number of results, too high = numerical instability.
+              Enforces selection of exactly k documents.
             </p>
           </div>
 
@@ -114,8 +140,7 @@ export default function ParameterControls({
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
             />
             <p className="text-xs text-gray-600 mt-1">
-              MMR relevance-diversity tradeoff. 0 = maximum diversity, 1 = maximum relevance.
-              Standard value is 0.5 (balanced).
+              MMR relevance-diversity tradeoff. 0 = max diversity, 1 = max relevance.
             </p>
           </div>
 
@@ -134,16 +159,7 @@ export default function ParameterControls({
               <option value="quality">Quality (6 replicas, 12K sweeps) - ~3s</option>
             </select>
             <p className="text-xs text-gray-600 mt-1">
-              Trade-off between speed and solution quality. Notebook uses 'balanced'.
-            </p>
-          </div>
-
-          {/* Info Box */}
-          <div className="flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-gray-900">
-              These parameters match the competition notebook. Adjust to see how
-              retrieval behavior changes. Reset to defaults for optimal performance.
+              Trade-off between speed and solution quality.
             </p>
           </div>
         </div>

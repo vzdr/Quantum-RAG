@@ -38,6 +38,7 @@ async def compare_methods(request: CompareRequest) -> CompareResponse:
             k=request.k,
             include_llm=request.include_llm,
             alpha=request.alpha,
+            beta=request.beta,
             penalty=request.penalty,
             lambda_param=request.lambda_param,
             solver_preset=request.solver_preset,

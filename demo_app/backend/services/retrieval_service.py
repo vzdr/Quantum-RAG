@@ -187,6 +187,7 @@ class RetrievalService:
         total_clusters: int,
         # Configurable parameters - alpha increased for better diversity demonstration
         alpha: float = 0.15,
+        beta: float = 0.4,
         penalty: float = 1000.0,
         lambda_param: float = 0.5,
         solver_preset: str = "balanced",
@@ -200,7 +201,7 @@ class RetrievalService:
         elif method == "mmr":
             strategy = MMRRetrieval(lambda_param=lambda_param)
         elif method == "qubo":
-            strategy = QUBORetrieval(alpha=alpha, penalty=penalty, solver='gurobi')
+            strategy = QUBORetrieval(alpha=alpha, beta=beta, penalty=penalty, solver='gurobi')
         else:
             raise ValueError(f"Unknown method: {method}")
 
@@ -273,6 +274,7 @@ class RetrievalService:
         include_llm: bool = True,
         # Configurable parameters - alpha increased for better diversity
         alpha: float = 0.15,
+        beta: float = 0.4,
         penalty: float = 1000.0,
         lambda_param: float = 0.5,
         solver_preset: str = "balanced",
@@ -320,6 +322,7 @@ class RetrievalService:
                 k,
                 config["total_clusters"],
                 alpha,  # Pass parameter
+                beta,  # Pass new beta parameter
                 penalty,  # Pass parameter
                 lambda_param,  # Pass parameter
                 solver_preset,  # Pass parameter

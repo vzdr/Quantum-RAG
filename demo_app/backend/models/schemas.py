@@ -52,6 +52,7 @@ class CompareRequest(BaseModel):
 
     # Configurable retrieval parameters (notebook defaults)
     alpha: float = Field(0.15, description="QUBO diversity weight (0=relevance only, 1=max diversity). Default 0.15 provides moderate diversity boost.", ge=0.0, le=1.0)
+    beta: float = Field(0.4, description="QUBO similarity threshold (0-1). Penalizes similarity only above this value.", ge=0.0, le=1.0)
     penalty: float = Field(1000.0, description="QUBO cardinality penalty (enforces exactly k selections)", ge=0.0, le=10000.0)
     lambda_param: float = Field(0.5, description="MMR lambda parameter (0=diversity, 1=relevance)", ge=0.0, le=1.0)
     solver_preset: str = Field("balanced", description="ORBIT solver preset (fast/balanced/quality)")
