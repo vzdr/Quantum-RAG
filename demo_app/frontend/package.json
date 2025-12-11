@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:backend": "cd ../.. && .venv\\Scripts\\python.exe -m uvicorn demo_app.backend.main:app --reload",
+    "dev:backend": "cd ../.. && venv\\Scripts\\python.exe -m uvicorn demo_app.backend.main:app --reload",
     "all": "concurrently \"npm run dev:backend\" \"npm run dev\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "build": "next build",
     "start": "next start",
