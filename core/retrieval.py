@@ -2,7 +2,7 @@
 Unified retrieval module with multiple strategies.
 """
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from .data_models import Chunk, RetrievalResult
 from .embedding import EmbeddingGenerator
@@ -116,16 +116,17 @@ class Retriever:
             'qubo': QUBORetrieval()
         }
 
-    def retrieve(self, query: str, k: int = 5, strategy: str = 'naive', **kwargs) -> List[RetrievalResult]:
+    def retrieve(self, query: str, k: int = 5, strategy: str = 'naive', candidates: Optional[List[Dict[str, Any]]] = None, **kwargs) -> List[RetrievalResult]:
         """Retrieves chunks based on the selected strategy."""
         if strategy not in self.strategies:
             raise ValueError(f"Unknown strategy: {strategy}. Available: {list(self.strategies.keys())}")
 
         query_embedding = self.embedder.embed([query])[0]
         
-        # Fetch more candidates for diversity-aware strategies
-        candidate_multiplier = 3 if strategy in ['mmr', 'qubo'] else 1
-        candidates = self.vector_store.search(query_embedding, k=k * candidate_multiplier)
+        if candidates is None:
+            # Fetch more candidates for diversity-aware strategies
+            candidate_multiplier = 3 if strategy in ['mmr', 'qubo'] else 1
+            candidates = self.vector_store.search(query_embedding, k=k * candidate_multiplier)
         
         retrieval_strategy = self.strategies[strategy]
         if isinstance(retrieval_strategy, (MMRRetrieval, QUBORetrieval)):
