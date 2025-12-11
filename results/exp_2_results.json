@@ -1,0 +1,152 @@
+[
+  {
+    "alpha": 0.04,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.05,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.06,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.07,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.08,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.09,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.04,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.05,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.06,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.07,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.08,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.09,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.04,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.05,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.06,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.07,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.08,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.09,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 18.0
+  },
+  {
+    "alpha": 0.03,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 16.0
+  },
+  {
+    "alpha": 0.03,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 16.0
+  },
+  {
+    "alpha": 0.03,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 16.0
+  },
+  {
+    "alpha": 0.01,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 14.0
+  },
+  {
+    "alpha": 0.02,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 14.0
+  },
+  {
+    "alpha": 0.01,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 14.0
+  },
+  {
+    "alpha": 0.02,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 14.0
+  },
+  {
+    "alpha": 0.01,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 14.0
+  },
+  {
+    "alpha": 0.02,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 14.0
+  },
+  {
+    "alpha": 0.0,
+    "penalty": 0.1,
+    "overall_mean_aspect_recall": 8.0
+  },
+  {
+    "alpha": 0.0,
+    "penalty": 1,
+    "overall_mean_aspect_recall": 8.0
+  },
+  {
+    "alpha": 0.0,
+    "penalty": 10,
+    "overall_mean_aspect_recall": 8.0
+  }
+]

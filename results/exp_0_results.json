@@ -1,0 +1,43 @@
+{
+  "alpha": 0.1,
+  "k": 5,
+  "num_prompts_per_level": 100,
+  "levels": {
+    "0": {
+      "correlation": -0.8986430454110851,
+      "p_value": 0.0,
+      "n_prompts": 100,
+      "n_data_points": 14250600
+    },
+    "1": {
+      "correlation": -0.9032065036016251,
+      "p_value": 0.0,
+      "n_prompts": 100,
+      "n_data_points": 14250600
+    },
+    "2": {
+      "correlation": -0.8504752456988124,
+      "p_value": 0.0,
+      "n_prompts": 100,
+      "n_data_points": 14250600
+    },
+    "3": {
+      "correlation": -0.7527594601417908,
+      "p_value": 0.0,
+      "n_prompts": 100,
+      "n_data_points": 14250600
+    },
+    "4": {
+      "correlation": -0.5966181087238074,
+      "p_value": 0.0,
+      "n_prompts": 100,
+      "n_data_points": 14250600
+    },
+    "5": {
+      "correlation": -0.4715418984367187,
+      "p_value": 0.0,
+      "n_prompts": 100,
+      "n_data_points": 14250600
+    }
+  }
+}
