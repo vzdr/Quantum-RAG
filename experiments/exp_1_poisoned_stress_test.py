@@ -27,7 +27,7 @@ from core.utils import (
     compute_aspect_recall
 )
 
-def run_retrieval_comparison(chunks, embeddings_dict, redundancy_level, k=5, num_prompts=10):
+def run_retrieval_comparison(chunks, embeddings_dict, redundancy_level, k=5, num_prompts=10, beta=0.4):
     """Runs Top-K, MMR, and QUBO comparison for a given redundancy level."""
     all_prompt_ids = list(set(c['prompt_id'] for c in chunks if c.get('chunk_type') == 'prompt'))
     prompt_ids = np.random.choice(all_prompt_ids, size=min(num_prompts, len(all_prompt_ids)), replace=False).tolist()
@@ -37,7 +37,7 @@ def run_retrieval_comparison(chunks, embeddings_dict, redundancy_level, k=5, num
     strategies = {
         'topk': NaiveRetrieval(),
         'mmr': MMRRetrieval(lambda_param=0.85),
-        'qubo': QUBORetrieval(alpha=0.04, penalty=1, solver='gurobi')
+        'qubo': QUBORetrieval(alpha=0.04, penalty=1, beta=beta, solver='gurobi')
     }
     
     recalls = {name: [] for name in strategies}
@@ -120,13 +120,14 @@ def plot_results(all_results, output_path):
 def main():
     parser = argparse.ArgumentParser(description='Experiment 1: Poisoned Stress Test')
     parser.add_argument('--num-prompts', type=int, default=10, help='Number of prompts to test.')
+    parser.add_argument('--beta', type=float, default=0.4, help='QUBO similarity threshold.')
     args = parser.parse_args()
 
     print("--- Running Experiment 1: Poisoned Stress Test ---")
     chunks, embeddings_dict = load_wikipedia_dataset()
 
     all_results = [
-        run_retrieval_comparison(chunks, embeddings_dict, level, k=5, num_prompts=args.num_prompts)
+        run_retrieval_comparison(chunks, embeddings_dict, level, k=5, num_prompts=args.num_prompts, beta=args.beta)
         for level in range(6)
     ]
 
