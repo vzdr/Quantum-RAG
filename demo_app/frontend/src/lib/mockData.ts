@@ -208,16 +208,24 @@ export function getMockCompareResponse(query: string, dataset: string): CompareR
 export const DEMO_QUERIES = {
   medical: [
     'Patient with chronic fatigue, joint pain, and occasional low-grade fever',
-    'Symptoms of tiredness, muscle aches, and difficulty concentrating',
-    'Persistent exhaustion with recurring infections and swollen glands',
-  ],
-  legal: [
-    'Contract breach involving unpaid employment bonuses',
-    'Age discrimination in corporate restructuring',
-    'Patent infringement in software implementation',
+    'Extreme tiredness, difficulty concentrating, and muscle weakness',
+    'Persistent exhaustion with cognitive difficulties and widespread pain',
+    'Fatigue with joint stiffness, rash, and sensitivity to sunlight',
   ],
   greedy_trap: [
-    'I feel tired all the time with various symptoms',
-    'General fatigue with multiple system involvement',
+    'Patient experiencing persistent fatigue with multiple symptoms',
+    'General tiredness affecting multiple body systems',
+    'Diagnostic challenge with overlapping symptom clusters',
+  ],
+  legal: [
+    'Employment contract breach involving unpaid bonuses',
+    'Discrimination claim in workplace termination',
+    'Intellectual property dispute in software development',
+  ],
+  wikipedia: [
+    'How does climate change affect global temperatures?',
+    'What are the key principles of quantum mechanics?',
+    'Explain the history and impact of artificial intelligence',
+    'Overview of renewable energy technologies',
   ],
 };

@@ -64,8 +64,8 @@ export default function ParameterControls({
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
             />
             <p className="text-xs text-gray-600 mt-1">
-              Controls diversity emphasis in QUBO. Notebook uses 0.02 (balanced).
-              Higher = more diversity, lower = more relevance.
+              Controls diversity emphasis in QUBO. Default 0.15 provides moderate diversity boost.
+              Higher = more diversity, lower = more relevance. Range: 0.0-0.5.
             </p>
           </div>
 

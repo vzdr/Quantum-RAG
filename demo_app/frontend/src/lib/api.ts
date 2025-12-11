@@ -83,7 +83,7 @@ export async function compareMethodsAPI(
   dataset: string = 'medical',
   k: number = 5,
   includeLlm: boolean = true,
-  alpha: number = 0.02,
+  alpha: number = 0.15,
   penalty: number = 1000.0,
   lambdaParam: number = 0.5,
   solverPreset: string = 'balanced'

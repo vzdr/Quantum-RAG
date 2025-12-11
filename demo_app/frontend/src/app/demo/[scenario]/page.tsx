@@ -39,8 +39,8 @@ export default function ScenarioDemoPage({ params }: PageProps) {
   const [progress, setProgress] = useState<string>('');
   const [startTime, setStartTime] = useState<number>(0);
 
-  // Parameter state (matching notebook defaults)
-  const [alpha, setAlpha] = useState(0.02);
+  // Parameter state - alpha increased for better diversity demonstration
+  const [alpha, setAlpha] = useState(0.15);
   const [penalty, setPenalty] = useState(1000.0);
   const [lambdaParam, setLambdaParam] = useState(0.5);
   const [solverPreset, setSolverPreset] = useState('balanced');

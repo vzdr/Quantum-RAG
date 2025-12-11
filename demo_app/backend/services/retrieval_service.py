@@ -45,10 +45,9 @@ class RetrievalService:
     # Dataset configurations
     DATASETS = {
         "medical": {
-            "path": "data/wikipedia",
-            "collection": "wikipedia_medical",
-            "total_clusters": 100,  # Wikipedia has ~100 unique article aspects
-            "loader": "wikipedia",  # Use Wikipedia JSONL+NPZ loader
+            "path": "data/medical/raw",
+            "collection": "medical_conditions_demo",
+            "total_clusters": 22,  # 22 medical conditions
         },
         "greedy_trap": {
             "path": "data/greedy_trap",
@@ -59,6 +58,12 @@ class RetrievalService:
             "path": "data/legal_cases",
             "collection": "legal_demo",
             "total_clusters": 5,  # 5 legal categories
+        },
+        "wikipedia": {
+            "path": "data/wikipedia",
+            "collection": "wikipedia_general",
+            "total_clusters": 171,  # 171 Wikipedia articles
+            "loader": "wikipedia",  # Use Wikipedia JSONL+NPZ loader
         },
     }
 
@@ -185,8 +190,8 @@ class RetrievalService:
         candidates: List[Dict[str, Any]],
         k: int,
         total_clusters: int,
-        # Configurable parameters with notebook defaults
-        alpha: float = 0.02,
+        # Configurable parameters - alpha increased for better diversity demonstration
+        alpha: float = 0.15,
         penalty: float = 1000.0,
         lambda_param: float = 0.5,
         solver_preset: str = "balanced",
@@ -276,8 +281,8 @@ class RetrievalService:
         dataset: str,
         k: int = 5,
         include_llm: bool = True,
-        # Configurable parameters with notebook defaults
-        alpha: float = 0.02,
+        # Configurable parameters - alpha increased for better diversity
+        alpha: float = 0.15,
         penalty: float = 1000.0,
         lambda_param: float = 0.5,
         solver_preset: str = "balanced",
@@ -291,7 +296,7 @@ class RetrievalService:
             dataset: Dataset to search
             k: Number of results per method
             include_llm: Whether to generate LLM responses
-            alpha: QUBO diversity weight (notebook default: 0.02)
+            alpha: QUBO diversity weight (default: 0.15 for moderate diversity)
             penalty: QUBO cardinality penalty (notebook default: 1000.0)
             lambda_param: MMR lambda parameter (default: 0.5)
             solver_preset: ORBIT solver preset (notebook default: "balanced")
