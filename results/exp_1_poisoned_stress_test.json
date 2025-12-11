@@ -4,7 +4,7 @@
     "num_prompts": 100,
     "topk": {
       "mean_aspect_recall": 90.2,
-      "std_aspect_recall": 11.830469136936204
+      "std_aspect_recall": 11.830469136936202
     },
     "mmr": {
       "mean_aspect_recall": 87.2,
@@ -12,7 +12,7 @@
     },
     "qubo": {
       "mean_aspect_recall": 90.2,
-      "std_aspect_recall": 11.830469136936204
+      "std_aspect_recall": 11.830469136936202
     }
   },
   {
@@ -40,7 +40,7 @@
     },
     "mmr": {
       "mean_aspect_recall": 68.4,
-      "std_aspect_recall": 15.014659503298768
+      "std_aspect_recall": 15.01465950329877
     },
     "qubo": {
       "mean_aspect_recall": 76.0,
@@ -56,7 +56,7 @@
     },
     "mmr": {
       "mean_aspect_recall": 65.2,
-      "std_aspect_recall": 17.80337046741431
+      "std_aspect_recall": 17.803370467414307
     },
     "qubo": {
       "mean_aspect_recall": 74.6,
@@ -72,7 +72,7 @@
     },
     "mmr": {
       "mean_aspect_recall": 64.6,
-      "std_aspect_recall": 18.078716768620495
+      "std_aspect_recall": 18.0787167686205
     },
     "qubo": {
       "mean_aspect_recall": 73.8,

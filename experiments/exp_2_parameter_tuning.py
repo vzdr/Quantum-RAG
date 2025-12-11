@@ -64,8 +64,10 @@ def evaluate_parameters(
             recall, _ = compute_aspect_recall([r.chunk for r in results], gold_aspects)
             level_recalls.append(recall)
 
-        if not level_recalls: return None
-        total_recalls.extend(level_recalls)
+        if not level_recalls:
+            total_recalls.append(0)
+        else:
+            total_recalls.extend(level_recalls)
 
     return {
         'alpha': alpha,
