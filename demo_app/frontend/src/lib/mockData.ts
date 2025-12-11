@@ -211,6 +211,8 @@ export const DEMO_QUERIES = {
     'Extreme tiredness, difficulty concentrating, and muscle weakness',
     'Persistent exhaustion with cognitive difficulties and widespread pain',
     'Fatigue with joint stiffness, rash, and sensitivity to sunlight',
+    'Bilateral joint swelling with morning stiffness and systemic inflammation',
+    'Sudden onset tremor with cognitive decline and muscle rigidity',
   ],
   greedy_trap: [
     'Patient experiencing persistent fatigue with multiple symptoms',
@@ -221,11 +223,15 @@ export const DEMO_QUERIES = {
     'Employment contract breach involving unpaid bonuses',
     'Discrimination claim in workplace termination',
     'Intellectual property dispute in software development',
+    'Corporate liability issues in employee compensation disputes',
+    'Unauthorized use of proprietary information by former employees',
   ],
   wikipedia: [
-    'How does climate change affect global temperatures?',
-    'What are the key principles of quantum mechanics?',
-    'Explain the history and impact of artificial intelligence',
-    'Overview of renewable energy technologies',
+    'How do greenhouse gases and carbon emissions contribute to climate change, and what renewable energy solutions can mitigate environmental damage?',
+    'Explain quantum mechanical principles and their applications in modern quantum computing and field theory',
+    'What are the foundational technologies behind artificial intelligence, machine learning, and neural networks, and how do they enable modern robotics?',
+    'How does the immune system respond to diseases like COVID-19 and what role do vaccines play in public health?',
+    'Trace the evolution of democracy, human rights, and major civil rights movements including women\'s suffrage and feminism',
+    'Evaluate modern transportation systems including rail transit, electric vehicles, and high-speed infrastructure',
   ],
 };

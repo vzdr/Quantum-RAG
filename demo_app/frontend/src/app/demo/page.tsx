@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Stethoscope, Scale, FlaskConical } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Stethoscope, Scale, FlaskConical, BookOpen } from 'lucide-react';
 
 const scenarios = [
   {
@@ -27,6 +27,14 @@ const scenarios = [
     icon: FlaskConical,
     badge: 'Technical',
     stats: { docs: 35, clusters: 5 },
+  },
+  {
+    id: 'wikipedia',
+    title: 'Wikipedia Knowledge',
+    description: 'Large-scale knowledge retrieval across 171 diverse topics. Best demonstrates diversity improvements at scale.',
+    icon: BookOpen,
+    badge: 'Large Scale',
+    stats: { docs: 5600, clusters: 171 },
   },
 ];
 

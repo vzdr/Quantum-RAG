@@ -21,6 +21,10 @@ const scenarios: Record<string, { title: string; description: string }> = {
     title: 'Adversarial Test',
     description: 'Stress test designed to break greedy methods',
   },
+  wikipedia: {
+    title: 'Wikipedia Knowledge',
+    description: 'Large-scale retrieval across 171 diverse topics',
+  },
 };
 
 interface PageProps {
