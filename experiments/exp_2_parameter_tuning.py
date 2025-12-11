@@ -148,13 +148,15 @@ def main():
     embedder = EmbeddingGenerator()
     vector_store = VectorStore(reset=True)
     
+    # Populate the vector store safely
     from core.data_models import EmbeddedChunk, Chunk
-    embedded_chunks = [
-        EmbeddedChunk(
-            chunk=Chunk(id=cid, text=c.get('text', ''), source=c.get('source', 'unknown'), metadata=c), 
-            embedding=emb
-        ) for cid, c, emb in zip(embeddings_dict.keys(), chunks, embeddings_dict.values())
-    ]
+    embedded_chunks = []
+    for chunk_data in chunks:
+        chunk_id = chunk_data.get('chunk_id')
+        if chunk_id in embeddings_dict:
+            chunk_obj = Chunk(id=chunk_id, text=chunk_data.get('text', ''), source=chunk_data.get('article_title', 'unknown'), metadata=chunk_data)
+            embedding = embeddings_dict[chunk_id]
+            embedded_chunks.append(EmbeddedChunk(chunk=chunk_obj, embedding=embedding))
     vector_store.add(embedded_chunks)
     
     retriever = Retriever(embedder, vector_store)
