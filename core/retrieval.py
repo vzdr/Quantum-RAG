@@ -10,21 +10,28 @@ from .storage import VectorStore
 from .utils import compute_cosine_similarities, compute_pairwise_similarities
 
 
-def qubo_to_ising(r: np.ndarray, S: np.ndarray, alpha: float, P: float, k: int) -> Tuple[np.ndarray, np.ndarray]:
+def qubo_to_ising(r: np.ndarray, Q: np.ndarray, alpha: float, P: float, k: int) -> Tuple[np.ndarray, np.ndarray]:
     """
     Convert QUBO formulation to Ising Hamiltonian format for ORBIT.
 
-    QUBO Energy: E(x) = -r^T x + alpha * x^T S x + P(sum(x) - k)^2
-    where x_i ∈ {0, 1}
+    QUBO Energy: E(x) = -r^T x + alpha * x^T Q x + P(sum(x) - k)^2
+    where x_i ∈ {0, 1} and Q has diagonal = 0
 
-    Ising Energy: H(s) = -∑_{i,j} J_{ij} s_i s_j - ∑_i h_i s_i
+    Ising Energy: E(s) = s^T J s + s^T h (minimization form)
     where s_i ∈ {-1, +1}
 
     Conversion: x_i = (s_i + 1) / 2
 
+    Derived formula (constants dropped):
+    E(s) = (1/4)s^T(αQ + P·11^T)s + (1/2)s^T((αQ + P·11^T)·1 - (r + 2Pk·1))
+
+    This gives:
+    J_{ij} = (1/4)(α·Q_{ij} + P) for all i,j
+    h_i = (1/2)(α·sum_j Q_{ij} + n·P - r_i - 2Pk)
+
     Args:
         r: Relevance scores (n,)
-        S: Pairwise similarity matrix (n, n)
+        Q: Pairwise similarity matrix with diagonal = 0 (n, n)
         alpha: Diversity weight
         P: Penalty coefficient
         k: Target number of selections
@@ -35,28 +42,18 @@ def qubo_to_ising(r: np.ndarray, S: np.ndarray, alpha: float, P: float, k: int) 
     """
     n = len(r)
 
-    # Quadratic terms (interaction matrix J)
-    # After substitution x_i = (s_i+1)/2 into alpha*S_{ij}*x_i*x_j + P*x_i*x_j:
-    # Coefficient of s_i*s_j is (alpha*S_{ij} + P) / 4
+    # Quadratic terms: J = (1/4)(alpha*Q + P*11^T)
+    # J_{ij} = (alpha*Q_{ij} + P) / 4 for all i, j
     J = np.zeros((n, n))
     for i in range(n):
-        for j in range(i+1, n):
-            J[i, j] = (alpha * S[i, j] + P) / 4.0
-            J[j, i] = J[i, j]  # Symmetric
+        for j in range(n):
+            J[i, j] = (alpha * Q[i, j] + P) / 4.0
 
-    # Linear terms (external field h)
+    # Linear terms: h_i = (1/2)(alpha*sum_j Q_{ij} + n*P - r_i - 2*P*k)
     h = np.zeros(n)
     for i in range(n):
-        # Relevance: -r_i * (s_i+1)/2 → -r_i/2 * s_i + constant
-        h_relevance = -r[i] / 2.0
-
-        # Penalty linear: P(1-2k) * (s_i+1)/2 → P(1-2k)/2 * s_i + constant
-        h_penalty = P * (1 - 2*k) / 2.0
-
-        # Diagonal quadratic becomes linear after x_i^2 = x_i substitution
-        h_diagonal = (alpha * S[i, i] + P) / 4.0
-
-        h[i] = h_relevance + h_penalty + h_diagonal
+        row_sum = np.sum(Q[i, :])  # sum_j Q_{ij}
+        h[i] = 0.5 * (alpha * row_sum + n * P - r[i] - 2 * P * k)
 
     return J, h
 

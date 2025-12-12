@@ -24,13 +24,13 @@ def test_solver_equivalence():
     # Load dataset
     print("\n[1/5] Loading Wikipedia dataset...")
     chunks, embeddings_dict = load_wikipedia_dataset()
-    print(f"✓ Loaded {len(chunks)} chunks")
+    print(f"[OK] Loaded {len(chunks)} chunks")
 
     # Get a test prompt
     print("\n[2/5] Selecting test prompt...")
     prompt_ids = list(set(c['prompt_id'] for c in chunks if c.get('chunk_type') == 'prompt'))
     test_prompt_id = prompt_ids[0]  # Use first prompt
-    print(f"✓ Using prompt_id: {test_prompt_id}")
+    print(f"[OK] Using prompt_id: {test_prompt_id}")
 
     # Get prompt embedding and candidates
     print("\n[3/5] Preparing test case...")
@@ -52,8 +52,8 @@ def test_solver_equivalence():
     } for cand in candidates if embeddings_dict.get(cand['chunk_id']) is not None]
 
     candidate_results.sort(key=lambda x: x['score'], reverse=True)
-    print(f"✓ Prepared {len(candidate_results)} candidates, selecting k={k}")
-    print(f"✓ Gold aspects: {len(gold_aspects)}")
+    print(f"[OK] Prepared {len(candidate_results)} candidates, selecting k={k}")
+    print(f"[OK] Gold aspects: {len(gold_aspects)}")
 
     # Test parameters (production values)
     alpha = 0.04
@@ -68,7 +68,7 @@ def test_solver_equivalence():
     gurobi_recall, gurobi_count = compute_aspect_recall(gurobi_meta, gold_aspects)
     gurobi_ids = [r.chunk.id for r in gurobi_results]
 
-    print(f"✓ Gurobi selected: {gurobi_ids}")
+    print(f"[OK] Gurobi selected: {gurobi_ids}")
     print(f"  Aspect recall: {gurobi_recall:.1f}% ({gurobi_count}/{len(gold_aspects)} aspects)")
 
     # Run ORBIT solver
@@ -80,7 +80,7 @@ def test_solver_equivalence():
         orbit_recall, orbit_count = compute_aspect_recall(orbit_meta, gold_aspects)
         orbit_ids = [r.chunk.id for r in orbit_results]
 
-        print(f"✓ ORBIT selected: {orbit_ids}")
+        print(f"[OK] ORBIT selected: {orbit_ids}")
         print(f"  Aspect recall: {orbit_recall:.1f}% ({orbit_count}/{len(gold_aspects)} aspects)")
 
         # Compare results
@@ -108,23 +108,23 @@ def test_solver_equivalence():
         print("\n" + "="*80)
         recall_diff = abs(gurobi_recall - orbit_recall)
         if recall_diff <= 20.0:  # Allow 20% difference (ORBIT is stochastic)
-            print("✓ TEST PASSED: Solvers produce comparable results")
-            print(f"  (Recall difference: {recall_diff:.1f}% ≤ 20% threshold)")
+            print("[PASS] TEST PASSED: Solvers produce comparable results")
+            print(f"  (Recall difference: {recall_diff:.1f}% <= 20% threshold)")
         else:
-            print("⚠ TEST WARNING: Solvers differ significantly")
+            print("[WARN] TEST WARNING: Solvers differ significantly")
             print(f"  (Recall difference: {recall_diff:.1f}% > 20% threshold)")
             print("  Note: ORBIT is stochastic, some variation expected")
 
         if overlap_pct >= 60:
-            print(f"✓ Good overlap: {overlap_pct:.1f}% ≥ 60%")
+            print(f"[OK] Good overlap: {overlap_pct:.1f}% >= 60%")
         else:
-            print(f"⚠ Low overlap: {overlap_pct:.1f}% < 60%")
+            print(f"[WARN] Low overlap: {overlap_pct:.1f}% < 60%")
 
         print("\nNote: ORBIT uses probabilistic p-bit computing, so exact equivalence")
         print("      is not expected. Both solvers should find high-quality solutions.")
 
     except ImportError as e:
-        print(f"✗ ORBIT not available: {e}")
+        print(f"[FAIL] ORBIT not available: {e}")
         print("\nTo test ORBIT, install it:")
         print("  cd orbit")
         print("  uv pip install orbit-0.2.0-py3-none-any.whl")
