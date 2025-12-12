@@ -1,0 +1,104 @@
+[
+  {
+    "redundancy_level": 0,
+    "qubo_recall": 90.2,
+    "baseline_k": 5,
+    "topk": {
+      "k_needed": 5,
+      "k_increase": 0,
+      "recall_achieved": 90.2,
+      "extra_tokens": 0
+    },
+    "mmr": {
+      "k_needed": 5,
+      "k_increase": 0,
+      "recall_achieved": 87.2,
+      "extra_tokens": 0
+    }
+  },
+  {
+    "redundancy_level": 1,
+    "qubo_recall": 75.8,
+    "baseline_k": 5,
+    "topk": {
+      "k_needed": 7,
+      "k_increase": 2,
+      "recall_achieved": 82.8,
+      "extra_tokens": 422
+    },
+    "mmr": {
+      "k_needed": 5,
+      "k_increase": 0,
+      "recall_achieved": 75.4,
+      "extra_tokens": 0
+    }
+  },
+  {
+    "redundancy_level": 2,
+    "qubo_recall": 76.0,
+    "baseline_k": 5,
+    "topk": {
+      "k_needed": 8,
+      "k_increase": 3,
+      "recall_achieved": 74.0,
+      "extra_tokens": 634
+    },
+    "mmr": {
+      "k_needed": 6,
+      "k_increase": 1,
+      "recall_achieved": 75.6,
+      "extra_tokens": 211
+    }
+  },
+  {
+    "redundancy_level": 3,
+    "qubo_recall": 74.6,
+    "baseline_k": 5,
+    "topk": {
+      "k_needed": 10,
+      "k_increase": 5,
+      "recall_achieved": 74.8,
+      "extra_tokens": 1056
+    },
+    "mmr": {
+      "k_needed": 6,
+      "k_increase": 1,
+      "recall_achieved": 71.6,
+      "extra_tokens": 211
+    }
+  },
+  {
+    "redundancy_level": 4,
+    "qubo_recall": 73.8,
+    "baseline_k": 5,
+    "topk": {
+      "k_needed": 11,
+      "k_increase": 6,
+      "recall_achieved": 71.6,
+      "extra_tokens": 1268
+    },
+    "mmr": {
+      "k_needed": 7,
+      "k_increase": 2,
+      "recall_achieved": 72.4,
+      "extra_tokens": 422
+    }
+  },
+  {
+    "redundancy_level": 5,
+    "qubo_recall": 73.4,
+    "baseline_k": 5,
+    "topk": {
+      "k_needed": 14,
+      "k_increase": 9,
+      "recall_achieved": 73.2,
+      "extra_tokens": 1902
+    },
+    "mmr": {
+      "k_needed": 6,
+      "k_increase": 1,
+      "recall_achieved": 71.2,
+      "extra_tokens": 211
+    }
+  }
+]

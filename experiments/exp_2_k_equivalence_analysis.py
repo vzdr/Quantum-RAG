@@ -1,5 +1,5 @@
 """
-Experiment 1.1: K-Equivalence Analysis
+Experiment 2: K-Equivalence Analysis
 
 Purpose: Determine how much k must increase for Top-K/MMR to match QUBO's aspect recall.
          Tests incrementally higher k values until performance is within 3% of QUBO.
@@ -9,6 +9,9 @@ import json
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 # Add project root to path
 script_dir = Path(__file__).parent.resolve()
@@ -95,8 +98,72 @@ def find_equivalent_k(method_name, baseline_recall, chunks, embeddings_dict, red
     print(f" [max k={max_k} reached]")
     return max_k, test_k_value(strategy, chunks, embeddings_dict, redundancy_level, max_k)
 
+def plot_results(analysis_results, output_path):
+    """Generate visualization showing k increases and token costs."""
+    redundancy_levels = [r['redundancy_level'] for r in analysis_results]
+
+    # Extract data
+    topk_k_increases = [r['topk']['k_increase'] for r in analysis_results]
+    mmr_k_increases = [r['mmr']['k_increase'] for r in analysis_results]
+    topk_extra_tokens = [r['topk']['extra_tokens'] for r in analysis_results]
+    mmr_extra_tokens = [r['mmr']['extra_tokens'] for r in analysis_results]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+    x = np.array(redundancy_levels)
+    width = 0.35
+
+    # Plot 1: K Increases
+    ax1.bar(x - width/2, topk_k_increases, width, label='Top-K', alpha=0.8, color='#e74c3c')
+    ax1.bar(x + width/2, mmr_k_increases, width, label='MMR', alpha=0.8, color='#f39c12')
+
+    ax1.set_xlabel('Redundancy Level', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('K Increase Needed', fontsize=12, fontweight='bold')
+    ax1.set_title('K Increase to Match QUBO Performance', fontsize=13, fontweight='bold')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([f'L{i}' for i in redundancy_levels])
+    ax1.legend(loc='upper left', fontsize=11)
+    ax1.grid(axis='y', alpha=0.3, linestyle='--')
+    ax1.set_ylim(bottom=0)
+
+    # Add value labels on bars
+    for i, (topk, mmr) in enumerate(zip(topk_k_increases, mmr_k_increases)):
+        if topk > 0:
+            ax1.text(x[i] - width/2, topk + 0.2, f'+{topk}', ha='center', va='bottom', fontsize=9, fontweight='bold')
+        if mmr > 0:
+            ax1.text(x[i] + width/2, mmr + 0.2, f'+{mmr}', ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+    # Plot 2: Extra Tokens
+    ax2.bar(x - width/2, topk_extra_tokens, width, label='Top-K', alpha=0.8, color='#e74c3c')
+    ax2.bar(x + width/2, mmr_extra_tokens, width, label='MMR', alpha=0.8, color='#f39c12')
+
+    ax2.set_xlabel('Redundancy Level', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Extra Tokens Required', fontsize=12, fontweight='bold')
+    ax2.set_title('Context Window Cost (Extra Tokens)', fontsize=13, fontweight='bold')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels([f'L{i}' for i in redundancy_levels])
+    ax2.legend(loc='upper left', fontsize=11)
+    ax2.grid(axis='y', alpha=0.3, linestyle='--')
+    ax2.set_ylim(bottom=0)
+
+    # Add value labels on bars (only if non-zero)
+    for i, (topk, mmr) in enumerate(zip(topk_extra_tokens, mmr_extra_tokens)):
+        if topk > 0:
+            ax2.text(x[i] - width/2, topk + max(topk_extra_tokens)*0.02, f'{topk:,}',
+                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+        if mmr > 0:
+            ax2.text(x[i] + width/2, mmr + max(mmr_extra_tokens)*0.02, f'{mmr:,}',
+                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+
+    fig.suptitle('Experiment 2: Context Window Efficiency - QUBO vs Baselines',
+                 fontsize=14, fontweight='bold', y=0.98)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"\nVisualization saved to {output_path}")
+
 def main():
-    print("--- Running Experiment 1.1: K-Equivalence Analysis ---")
+    print("--- Running Experiment 2: K-Equivalence Analysis ---")
 
     # Load baseline results from exp_1
     results_dir = project_root / 'results'
@@ -189,10 +256,13 @@ def main():
         analysis_results.append(level_result)
 
     # Save results
-    output_file = results_dir / 'exp_1_1_k_equivalence_analysis.json'
+    output_file = results_dir / 'exp_2_k_equivalence_analysis.json'
     with open(output_file, 'w') as f:
         json.dump(analysis_results, f, indent=2)
     print(f"\n✓ Results saved to {output_file}")
+
+    # Generate visualization
+    plot_results(analysis_results, results_dir / 'exp_2_k_equivalence_analysis.png')
 
     # Print summary
     print("\n" + "="*80)
