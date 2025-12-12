@@ -2,7 +2,7 @@
 Experiment 2: K-Equivalence Analysis
 
 Purpose: Determine how much k must increase for Top-K/MMR to match QUBO's aspect recall.
-         Tests incrementally higher k values until performance is within 3% of QUBO.
+         Tests incrementally higher k values until performance is within 1% of QUBO.
 """
 import sys
 import json
@@ -68,7 +68,7 @@ def test_k_value(strategy, chunks, embeddings_dict, redundancy_level, k, num_pro
     return np.mean(recalls) if recalls else 0.0
 
 def find_equivalent_k(method_name, baseline_recall, chunks, embeddings_dict, redundancy_level,
-                      starting_k=5, max_k=50, tolerance=3.0):
+                      starting_k=5, max_k=50, tolerance=1.0):
     """
     Find the minimum k where method achieves within tolerance% of baseline_recall.
     Returns (k_needed, avg_recall) or (None, current_recall) if already within tolerance.
@@ -205,8 +205,8 @@ def main():
 
         # Analyze Top-K
         print(f"  Top-K (current: {topk_recall:.1f}%)")
-        if topk_recall >= qubo_recall - 3.0:
-            print(f"    ✓ Already within 3% - no increase needed")
+        if topk_recall >= qubo_recall - 1.0:
+            print(f"    ✓ Already within 1% - no increase needed")
             level_result['topk'] = {
                 'k_needed': starting_k,
                 'k_increase': 0,
@@ -230,8 +230,8 @@ def main():
 
         # Analyze MMR
         print(f"  MMR (current: {mmr_recall:.1f}%)")
-        if mmr_recall >= qubo_recall - 3.0:
-            print(f"    ✓ Already within 3% - no increase needed")
+        if mmr_recall >= qubo_recall - 1.0:
+            print(f"    ✓ Already within 1% - no increase needed")
             level_result['mmr'] = {
                 'k_needed': starting_k,
                 'k_increase': 0,
@@ -281,7 +281,7 @@ def main():
         print(f"L{level:<7} {topk_k:<12} {topk_tokens:<15} {mmr_k:<12} {mmr_tokens:<15}")
 
     print("="*80)
-    print("✓ Within 3% means no k increase needed")
+    print("✓ Within 1% means no k increase needed")
     print("--- Experiment Complete ---")
 
 if __name__ == '__main__':
