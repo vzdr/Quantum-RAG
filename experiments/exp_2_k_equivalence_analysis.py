@@ -26,17 +26,21 @@ from core.utils import (
     compute_aspect_recall
 )
 
-def estimate_avg_chunk_length(chunks):
+def estimate_avg_chunk_length(chunks, random_seed=42):
     """Estimate average chunk length in tokens (approximate as words / 0.75)."""
     sample_size = min(1000, len(chunks))
-    sample_chunks = np.random.choice(chunks, size=sample_size, replace=False)
+    rng = np.random.RandomState(random_seed)
+    sample_chunks = rng.choice(chunks, size=sample_size, replace=False)
     lengths = [len(c['text'].split()) / 0.75 for c in sample_chunks]  # rough token estimate
     return np.mean(lengths)
 
-def test_k_value(strategy, chunks, embeddings_dict, redundancy_level, k, num_prompts=50):
+def test_k_value(strategy, chunks, embeddings_dict, redundancy_level, k, num_prompts=50, random_seed=42):
     """Test a specific k value and return average aspect recall."""
     all_prompt_ids = list(set(c['prompt_id'] for c in chunks if c.get('chunk_type') == 'prompt'))
-    prompt_ids = np.random.choice(all_prompt_ids, size=min(num_prompts, len(all_prompt_ids)), replace=False).tolist()
+
+    # Set seed for reproducibility
+    rng = np.random.RandomState(random_seed + redundancy_level + k)  # Unique seed per test
+    prompt_ids = rng.choice(all_prompt_ids, size=min(num_prompts, len(all_prompt_ids)), replace=False).tolist()
 
     recalls = []
 
@@ -98,28 +102,35 @@ def find_equivalent_k(method_name, baseline_recall, chunks, embeddings_dict, red
     print(f" [max k={max_k} reached]")
     return max_k, test_k_value(strategy, chunks, embeddings_dict, redundancy_level, max_k)
 
-def plot_results(analysis_results, output_path):
-    """Generate visualization showing token costs with k increases in brackets."""
+def plot_results(analysis_results, avg_chunk_tokens, output_path):
+    """Generate visualization showing absolute token counts for all three methods."""
     redundancy_levels = [r['redundancy_level'] for r in analysis_results]
+    baseline_k = analysis_results[0]['baseline_k']
 
-    # Extract data
+    # Calculate absolute tokens (baseline + extra)
+    qubo_tokens = [int(baseline_k * avg_chunk_tokens)] * len(redundancy_levels)
+    topk_k_values = [r['topk']['k_needed'] for r in analysis_results]
+    mmr_k_values = [r['mmr']['k_needed'] for r in analysis_results]
+    topk_absolute_tokens = [int(k * avg_chunk_tokens) for k in topk_k_values]
+    mmr_absolute_tokens = [int(k * avg_chunk_tokens) for k in mmr_k_values]
+
+    # Extract k increases for labels
     topk_k_increases = [r['topk']['k_increase'] for r in analysis_results]
     mmr_k_increases = [r['mmr']['k_increase'] for r in analysis_results]
-    topk_extra_tokens = [r['topk']['extra_tokens'] for r in analysis_results]
-    mmr_extra_tokens = [r['mmr']['extra_tokens'] for r in analysis_results]
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(14, 6))
 
     x = np.array(redundancy_levels)
-    width = 0.35
+    width = 0.25
 
-    # Plot Extra Tokens
-    ax.bar(x - width/2, topk_extra_tokens, width, label='Top-K', alpha=0.8, color='#e74c3c')
-    ax.bar(x + width/2, mmr_extra_tokens, width, label='MMR', alpha=0.8, color='#f39c12')
+    # Plot absolute tokens for all three methods
+    ax.bar(x - width, qubo_tokens, width, label='QUBO (Ours)', alpha=0.8, color='#3498db')
+    ax.bar(x, topk_absolute_tokens, width, label='Top-K', alpha=0.8, color='#e74c3c')
+    ax.bar(x + width, mmr_absolute_tokens, width, label='MMR', alpha=0.8, color='#f39c12')
 
     ax.set_xlabel('Redundancy Level', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Extra Tokens Required', fontsize=12, fontweight='bold')
-    ax.set_title('Experiment 2: Context Window Cost to Match QUBO Performance',
+    ax.set_ylabel('Total Tokens in Context', fontsize=12, fontweight='bold')
+    ax.set_title('Experiment 2: Context Window Size to Achieve Equivalent Performance',
                  fontsize=14, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels([f'L{i}' for i in redundancy_levels])
@@ -127,20 +138,23 @@ def plot_results(analysis_results, output_path):
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.set_ylim(bottom=0)
 
-    # Add value labels on bars with k increase in brackets
-    max_tokens = max(max(topk_extra_tokens) if topk_extra_tokens else 0,
-                     max(mmr_extra_tokens) if mmr_extra_tokens else 0)
+    # Add value labels on bars
+    max_tokens = max(max(topk_absolute_tokens), max(mmr_absolute_tokens), qubo_tokens[0])
 
-    for i, (topk_tokens, topk_k, mmr_tokens, mmr_k) in enumerate(
-        zip(topk_extra_tokens, topk_k_increases, mmr_extra_tokens, mmr_k_increases)):
-        if topk_tokens > 0:
-            label = f'{topk_tokens:,} (+{topk_k})' if topk_k > 0 else '0'
-            ax.text(x[i] - width/2, topk_tokens + max_tokens*0.02, label,
-                    ha='center', va='bottom', fontsize=9, fontweight='bold')
-        if mmr_tokens > 0:
-            label = f'{mmr_tokens:,} (+{mmr_k})' if mmr_k > 0 else '0'
-            ax.text(x[i] + width/2, mmr_tokens + max_tokens*0.02, label,
-                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+    for i in range(len(redundancy_levels)):
+        # QUBO label (just k=5)
+        ax.text(x[i] - width, qubo_tokens[i] + max_tokens*0.01, f'{qubo_tokens[i]:,}\n(k=5)',
+                ha='center', va='bottom', fontsize=8, fontweight='bold')
+
+        # Top-K label (tokens with k in brackets)
+        topk_label = f'{topk_absolute_tokens[i]:,}\n(k={topk_k_values[i]})' if topk_k_increases[i] > 0 else f'{topk_absolute_tokens[i]:,}\n(k=5)'
+        ax.text(x[i], topk_absolute_tokens[i] + max_tokens*0.01, topk_label,
+                ha='center', va='bottom', fontsize=8, fontweight='bold')
+
+        # MMR label (tokens with k in brackets)
+        mmr_label = f'{mmr_absolute_tokens[i]:,}\n(k={mmr_k_values[i]})' if mmr_k_increases[i] > 0 else f'{mmr_absolute_tokens[i]:,}\n(k=5)'
+        ax.text(x[i] + width, mmr_absolute_tokens[i] + max_tokens*0.01, mmr_label,
+                ha='center', va='bottom', fontsize=8, fontweight='bold')
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -148,6 +162,9 @@ def plot_results(analysis_results, output_path):
 
 def main():
     print("--- Running Experiment 2: K-Equivalence Analysis ---")
+
+    # Set random seed for reproducibility
+    np.random.seed(42)
 
     # Load baseline results from exp_1
     results_dir = project_root / 'results'
@@ -239,14 +256,18 @@ def main():
 
         analysis_results.append(level_result)
 
-    # Save results
+    # Save results with metadata
+    results_with_metadata = {
+        'avg_chunk_tokens': avg_chunk_tokens,
+        'results': analysis_results
+    }
     output_file = results_dir / 'exp_2_k_equivalence_analysis.json'
     with open(output_file, 'w') as f:
-        json.dump(analysis_results, f, indent=2)
+        json.dump(results_with_metadata, f, indent=2)
     print(f"\n✓ Results saved to {output_file}")
 
     # Generate visualization
-    plot_results(analysis_results, results_dir / 'exp_2_k_equivalence_analysis.png')
+    plot_results(analysis_results, avg_chunk_tokens, results_dir / 'exp_2_k_equivalence_analysis.png')
 
     # Print summary
     print("\n" + "="*80)
