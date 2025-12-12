@@ -10,51 +10,24 @@ from .storage import VectorStore
 from .utils import compute_cosine_similarities, compute_pairwise_similarities
 
 
-def qubo_to_ising(r: np.ndarray, Q: np.ndarray, alpha: float, P: float, k: int) -> Tuple[np.ndarray, np.ndarray]:
+def qubo_to_ising(r: np.ndarray, Q: np.ndarray, alpha: float, P: float, k: int):
     """
-    Convert QUBO formulation to Ising Hamiltonian format for ORBIT.
-
-    QUBO Energy: E(x) = -r^T x + alpha * x^T Q x + P(sum(x) - k)^2
-    where x_i ∈ {0, 1} and Q has diagonal = 0
-
-    Ising Energy: E(s) = s^T J s + s^T h (minimization form)
-    where s_i ∈ {-1, +1}
-
-    Conversion: x_i = (s_i + 1) / 2
-
-    Derived formula (constants dropped):
-    E(s) = (1/4)s^T(αQ + P·11^T)s + (1/2)s^T((αQ + P·11^T)·1 - (r + 2Pk·1))
-
-    This gives:
-    J_{ij} = (1/4)(α·Q_{ij} + P) for all i,j
-    h_i = (1/2)(α·sum_j Q_{ij} + n·P - r_i - 2Pk)
-
-    Args:
-        r: Relevance scores (n,)
-        Q: Pairwise similarity matrix with diagonal = 0 (n, n)
-        alpha: Diversity weight
-        P: Penalty coefficient
-        k: Target number of selections
-
-    Returns:
-        J: Interaction matrix (n, n)
-        h: External field vector (n,)
+    Vectorized implementation of qubo_to_ising.
     """
     n = len(r)
-
-    # Quadratic terms: J = (1/4)(alpha*Q + P*11^T)
-    # J_{ij} = (alpha*Q_{ij} + P) / 4 for all i, j
-    J = np.zeros((n, n))
-    for i in range(n):
-        for j in range(n):
-            J[i, j] = (alpha * Q[i, j] + P) / 4.0
-
-    # Linear terms: h_i = (1/2)(alpha*sum_j Q_{ij} + n*P - r_i - 2*P*k)
-    h = np.zeros(n)
-    for i in range(n):
-        row_sum = np.sum(Q[i, :])  # sum_j Q_{ij}
-        h[i] = 0.5 * (alpha * row_sum + n * P - r[i] - 2 * P * k)
-
+    
+    # 1. J Calculation
+    # alpha * Q is (n, n)
+    # Adding P (scalar) adds P to every element in the matrix
+    J = (alpha * Q + P) / 4.0  # Result is matrix (n, n)
+    
+    # 2. h Calculation
+    # Q.sum(axis=1) creates a vector of shape (n,)
+    # r is a vector of shape (n,)
+    # n*P and 2*P*k are scalars
+    # The result of (Vector + Scalar - Vector - Scalar) is a Vector (n,)
+    h = 0.5 * (alpha * Q.sum(axis=1) + n * P - r - 2 * P * k)
+    
     return J, h
 
 
@@ -123,7 +96,7 @@ class MMRRetrieval(BaseRetrievalStrategy):
 
 class QUBORetrieval(BaseRetrievalStrategy):
     """QUBO-based retrieval using Gurobi or ORBIT solvers."""
-    def __init__(self, alpha: float = 0.04, penalty: float = 10.0, beta: float = 0.4, solver: str = 'gurobi'):
+    def __init__(self, alpha: float = 0.04, penalty: float = 10.0, beta: float = 0.8, solver: str = 'gurobi'):
         self.alpha = alpha
         self.penalty = penalty
         self.beta = beta
@@ -199,7 +172,7 @@ class QUBORetrieval(BaseRetrievalStrategy):
         max_h = np.max(np.abs(h)) if h.size > 0 else 1.0
         scale = max(max_J, max_h)
 
-        if scale > 10.0:  # Only scale if needed
+        if scale > 100.0:  # Only scale if needed
             J_scaled = J / scale
             h_scaled = h / scale
         else:
@@ -208,12 +181,13 @@ class QUBORetrieval(BaseRetrievalStrategy):
 
         # Solve with ORBIT
         # Beta range: start low for exploration, end high for exploitation
+        # Tuned parameters: more replicas for exploration, more sweeps for convergence
         result = orbit.optimize_ising(
             J_scaled, h_scaled,
-            n_replicas=4,
-            full_sweeps=15000,
+            n_replicas=8,
+            full_sweeps=300,
             beta_initial=0.1,
-            beta_end=5.0,
+            beta_end=10.0,
             beta_step_interval=1
         )
 
@@ -223,8 +197,12 @@ class QUBORetrieval(BaseRetrievalStrategy):
         # Extract selected indices (where x_i = 1)
         selected_indices = [i for i, val in enumerate(x) if val == 1]
 
-        # If not exactly k selected (rare), fall back to top k by relevance
+        # Debug: Print what ORBIT actually selected
         if len(selected_indices) != k:
+            print(f"[DEBUG] ORBIT selected {len(selected_indices)} items (expected {k})")
+            print(f"[DEBUG] Penalty={self.penalty}, selected indices: {selected_indices}")
+
+            # If not exactly k selected (rare), fall back to top k by relevance
             sorted_indices = np.argsort(-query_sims)
             return sorted_indices[:k].tolist()
 
