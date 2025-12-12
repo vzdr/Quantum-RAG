@@ -43,11 +43,11 @@ export default function ScenarioDemoPage({ params }: PageProps) {
   const [progress, setProgress] = useState<string>('');
   const [startTime, setStartTime] = useState<number>(0);
 
-  // Parameter state - alpha increased for better diversity demonstration
-  const [alpha, setAlpha] = useState(0.15);
-  const [beta, setBeta] = useState(0.4);
-  const [penalty, setPenalty] = useState(1000.0);
-  const [lambdaParam, setLambdaParam] = useState(0.5);
+  // Parameter state - production values from experiments
+  const [alpha, setAlpha] = useState(0.04);
+  const [beta, setBeta] = useState(0.8);
+  const [penalty, setPenalty] = useState(10.0);
+  const [lambdaParam, setLambdaParam] = useState(0.85);
   const [solverPreset, setSolverPreset] = useState('balanced');
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {

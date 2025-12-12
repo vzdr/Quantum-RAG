@@ -45,34 +45,53 @@ def load_wikipedia_dataset(data_dir: Path) -> Tuple[List[Dict], Dict[str, np.nda
 
 def convert_wikipedia_to_chroma_format(
     chunks: List[Dict],
-    embeddings: Dict[str, np.ndarray]
+    embeddings: Dict[str, np.ndarray],
+    redundancy_level: int = 4
 ) -> List[Dict[str, Any]]:
     """
     Convert Wikipedia dataset to ChromaDB-compatible format.
-    Filters out redundant chunks and prompts - keeps only gold_base and noise.
+    Keeps gold_base, noise, and up to redundancy_level copies of each gold aspect.
 
     Args:
         chunks: Wikipedia chunks from JSONL
         embeddings: Embeddings dict
+        redundancy_level: Number of redundant copies to keep per aspect (default: 4)
 
     Returns:
         List of chunks in ChromaDB format with id, text, embedding, metadata
     """
     chroma_chunks = []
 
-    filtered_count = {'prompt': 0, 'gold_redundant': 0, 'kept': 0}
+    filtered_count = {'prompt': 0, 'gold_redundant_kept': 0, 'gold_redundant_filtered': 0, 'kept': 0}
+
+    # Track how many redundant chunks we've kept per (article, aspect) combination
+    redundant_counts = {}
 
     for chunk in chunks:
         chunk_type = chunk.get('chunk_type', '')
 
-        # Skip prompts and redundant chunks (keep only base + noise)
+        # Skip prompts
         if chunk_type == 'prompt':
             filtered_count['prompt'] += 1
             continue
 
+        # For redundant chunks, keep only redundancy_level copies per aspect
         if chunk_type == 'gold_redundant':
-            filtered_count['gold_redundant'] += 1
-            continue
+            article_title = chunk.get('article_title', 'unknown')
+            aspect_name = chunk.get('aspect_name', 'general')
+            key = (article_title, aspect_name)
+
+            # Count how many we've kept so far
+            count = redundant_counts.get(key, 0)
+
+            if count < redundancy_level:
+                # Keep this redundant chunk
+                redundant_counts[key] = count + 1
+                filtered_count['gold_redundant_kept'] += 1
+            else:
+                # Skip this redundant chunk (already have enough)
+                filtered_count['gold_redundant_filtered'] += 1
+                continue
 
         chunk_id = chunk['chunk_id']
         if chunk_id not in embeddings:
@@ -102,8 +121,10 @@ def convert_wikipedia_to_chroma_format(
         })
         filtered_count['kept'] += 1
 
-    print(f"Wikipedia filtering: Kept {filtered_count['kept']}, "
-          f"Filtered out {filtered_count['prompt']} prompts + "
-          f"{filtered_count['gold_redundant']} redundant chunks")
+    print(f"Wikipedia filtering (redundancy_level={redundancy_level}): "
+          f"Kept {filtered_count['kept']} total chunks "
+          f"({filtered_count['gold_redundant_kept']} redundant + others), "
+          f"Filtered {filtered_count['prompt']} prompts + "
+          f"{filtered_count['gold_redundant_filtered']} excess redundant chunks")
 
     return chroma_chunks

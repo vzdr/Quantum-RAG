@@ -162,7 +162,7 @@ class RetrievalService:
 
             print(f"Loading Wikipedia dataset from {data_path}...")
             chunks, embeddings = load_wikipedia_dataset(data_path)
-            chroma_chunks = convert_wikipedia_to_chroma_format(chunks, embeddings)
+            chroma_chunks = convert_wikipedia_to_chroma_format(chunks, embeddings, redundancy_level=4)
 
             # Add with pre-computed embeddings
             vector_store.add_with_embeddings(chroma_chunks)
@@ -188,11 +188,11 @@ class RetrievalService:
         k: int,
         total_clusters: int,
         dataset: str = None,
-        # Configurable parameters - alpha increased for better diversity demonstration
-        alpha: float = 0.15,
-        beta: float = 0.4,
-        penalty: float = 1000.0,
-        lambda_param: float = 0.5,
+        # Configurable parameters - production values from experiments
+        alpha: float = 0.04,
+        beta: float = 0.8,
+        penalty: float = 10.0,
+        lambda_param: float = 0.85,
         solver_preset: str = "balanced",
     ) -> Tuple[str, MethodResult]:
         """Run a single retrieval method and compute metrics."""
@@ -296,11 +296,11 @@ class RetrievalService:
         dataset: str,
         k: int = 5,
         include_llm: bool = True,
-        # Configurable parameters - alpha increased for better diversity
-        alpha: float = 0.15,
-        beta: float = 0.4,
-        penalty: float = 1000.0,
-        lambda_param: float = 0.5,
+        # Configurable parameters - production values from experiments
+        alpha: float = 0.04,
+        beta: float = 0.8,
+        penalty: float = 10.0,
+        lambda_param: float = 0.85,
         solver_preset: str = "balanced",
     ) -> Dict[str, Any]:
         """
@@ -312,10 +312,10 @@ class RetrievalService:
             dataset: Dataset to search
             k: Number of results per method
             include_llm: Whether to generate LLM responses
-            alpha: QUBO diversity weight (default: 0.15 for moderate diversity)
-            penalty: QUBO cardinality penalty (notebook default: 1000.0)
-            lambda_param: MMR lambda parameter (default: 0.5)
-            solver_preset: ORBIT solver preset (notebook default: "balanced")
+            alpha: QUBO diversity weight (default: 0.04, tuned via experiments)
+            penalty: QUBO cardinality penalty (default: 10.0, tuned via experiments)
+            lambda_param: MMR lambda parameter (default: 0.85, higher = more relevance)
+            solver_preset: ORBIT solver preset (default: "balanced")
 
         Returns:
             Dictionary with results from all methods
