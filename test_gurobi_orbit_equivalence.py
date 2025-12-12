@@ -55,10 +55,10 @@ def test_solver_equivalence():
     print(f"✓ Prepared {len(candidate_results)} candidates, selecting k={k}")
     print(f"✓ Gold aspects: {len(gold_aspects)}")
 
-    # Test parameters
-    alpha = 0.20
-    penalty = 1000.0
-    beta = 0.4
+    # Test parameters (production values)
+    alpha = 0.04
+    penalty = 10.0
+    beta = 0.8
 
     # Run Gurobi solver
     print(f"\n[4/5] Running Gurobi solver (alpha={alpha}, penalty={penalty}, beta={beta})...")

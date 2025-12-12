@@ -195,13 +195,28 @@ class QUBORetrieval(BaseRetrievalStrategy):
         S = pairwise_sim - np.identity(n)
         J, h = qubo_to_ising(query_sims, S, self.alpha, self.penalty, k)
 
+        # Scale coefficients to prevent overflow in ORBIT's sigmoid function
+        # ORBIT uses sigmoid(bias) which overflows if |bias| is too large
+        # Scale by max absolute value to keep coefficients reasonable
+        max_J = np.max(np.abs(J)) if J.size > 0 else 1.0
+        max_h = np.max(np.abs(h)) if h.size > 0 else 1.0
+        scale = max(max_J, max_h)
+
+        if scale > 10.0:  # Only scale if needed
+            J_scaled = J / scale
+            h_scaled = h / scale
+        else:
+            J_scaled = J
+            h_scaled = h
+
         # Solve with ORBIT
+        # Beta range: start low for exploration, end high for exploitation
         result = orbit.optimize_ising(
-            J, h,
+            J_scaled, h_scaled,
             n_replicas=4,
-            full_sweeps=10000,
-            beta_initial=0.5,
-            beta_end=3.0,
+            full_sweeps=15000,
+            beta_initial=0.1,
+            beta_end=5.0,
             beta_step_interval=1
         )
 
