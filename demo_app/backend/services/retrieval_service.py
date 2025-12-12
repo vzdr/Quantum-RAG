@@ -187,6 +187,7 @@ class RetrievalService:
         candidates: List[Dict[str, Any]],
         k: int,
         total_clusters: int,
+        dataset: str = None,
         # Configurable parameters - alpha increased for better diversity demonstration
         alpha: float = 0.15,
         beta: float = 0.4,
@@ -344,6 +345,7 @@ class RetrievalService:
                 candidates,
                 k,
                 config["total_clusters"],
+                dataset,  # Pass dataset for aspect recall computation
                 alpha,  # Pass parameter
                 beta,  # Pass new beta parameter
                 penalty,  # Pass parameter
@@ -426,6 +428,7 @@ class RetrievalService:
             candidates,
             k,
             config["total_clusters"],
+            dataset,
         )
 
         return result
