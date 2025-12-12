@@ -13,6 +13,8 @@ class RetrievalResult(BaseModel):
     text: str = Field(..., description="Document text content")
     source: str = Field(..., description="Source filename")
     chunk_id: str = Field(..., description="Unique chunk identifier")
+    aspect_id: Optional[int] = Field(None, description="Aspect ID for Wikipedia dataset")
+    aspect_name: Optional[str] = Field(None, description="Human-readable aspect name")
 
 
 class RetrievalMetrics(BaseModel):
@@ -22,6 +24,9 @@ class RetrievalMetrics(BaseModel):
     cluster_coverage: int = Field(..., description="Number of unique clusters covered")
     total_clusters: int = Field(..., description="Total clusters in dataset")
     avg_relevance: float = Field(..., description="Average relevance score")
+    aspect_recall: Optional[float] = Field(None, description="Percentage of gold aspects retrieved (Wikipedia dataset only)")
+    aspects_found: Optional[int] = Field(None, description="Number of gold aspects found (Wikipedia dataset only)")
+    total_aspects: Optional[int] = Field(5, description="Total gold aspects available (typically 5 for Wikipedia)")
 
 
 class MethodResult(BaseModel):

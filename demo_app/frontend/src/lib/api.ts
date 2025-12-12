@@ -10,6 +10,8 @@ export interface RetrievalResult {
   text: string;
   source: string;
   chunk_id: string;
+  aspect_id?: number;
+  aspect_name?: string;
 }
 
 export interface RetrievalMetrics {
@@ -18,6 +20,9 @@ export interface RetrievalMetrics {
   cluster_coverage: number;
   total_clusters: number;
   avg_relevance: number;
+  aspect_recall?: number;
+  aspects_found?: number;
+  total_aspects?: number;
 }
 
 export interface MethodResult {

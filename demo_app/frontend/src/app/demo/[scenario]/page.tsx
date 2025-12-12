@@ -274,14 +274,10 @@ export default function ScenarioDemoPage({ params }: PageProps) {
                     <div>
                       <div className="text-muted-foreground text-xs">Coverage</div>
                       <div className={`font-semibold ${color === 'success' ? 'text-success' : color === 'warning' ? 'text-warning' : 'text-danger'}`}>
-                        {data.metrics.cluster_coverage}/{data.metrics.total_clusters}
+                        {data.metrics.aspects_found !== undefined ? `${data.metrics.aspects_found}/${data.metrics.total_aspects || 5}` : `${data.metrics.cluster_coverage}/${data.metrics.total_clusters}`}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs">Latency</div>
-                      <div className="font-semibold text-foreground">{Math.round(data.metrics.latency_ms)}ms</div>
-                    </div>
-                    <div>
+                    <div className="col-span-2">
                       <div className="text-muted-foreground text-xs">Relevance</div>
                       <div className="font-semibold text-foreground">{(data.metrics.avg_relevance * 100).toFixed(0)}%</div>
                     </div>
@@ -302,7 +298,8 @@ export default function ScenarioDemoPage({ params }: PageProps) {
                   <div key={method} className="space-y-2">
                     <div className="text-sm font-medium text-muted-foreground">{method}</div>
                     {data.results.map((result, i) => {
-                      const cluster = result.source.replace('.txt', '').split('_').slice(0, -2).join('_') || result.source.replace('.txt', '').split('_')[0];
+                      // Use aspect_name if available, otherwise fallback to parsing source
+                      const aspectLabel = result.aspect_name || result.source.replace('.txt', '').split('_').slice(0, -2).join('_') || result.source.replace('.txt', '').split('_')[0];
                       return (
                         <div
                           key={i}
@@ -313,7 +310,7 @@ export default function ScenarioDemoPage({ params }: PageProps) {
                             <span className="text-xs text-muted-foreground">{(result.score * 100).toFixed(0)}%</span>
                           </div>
                           <p className="text-sm text-foreground line-clamp-3 mb-2">{result.text}</p>
-                          <span className="inline-block px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground">{cluster}</span>
+                          <span className="inline-block px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground">{aspectLabel}</span>
                         </div>
                       );
                     })}
@@ -346,9 +343,11 @@ export default function ScenarioDemoPage({ params }: PageProps) {
             <div className="p-6 rounded-xl bg-success-light/30 border border-success/30 text-center">
               <h3 className="font-semibold text-success mb-2">QUBO Wins</h3>
               <p className="text-sm text-foreground">
-                {results.qubo.metrics.cluster_coverage} clusters covered vs {results.topk.metrics.cluster_coverage} for Top-K •{' '}
-                {Math.round((1 - results.qubo.metrics.intra_list_similarity / results.topk.metrics.intra_list_similarity) * 100)}% more diverse •{' '}
-                {Math.round(results.qubo.metrics.latency_ms)}ms latency
+                {results.qubo.metrics.aspects_found !== undefined
+                  ? `${results.qubo.metrics.aspects_found}/${results.qubo.metrics.total_aspects || 5} aspects vs ${results.topk.metrics.aspects_found}/${results.topk.metrics.total_aspects || 5} for Top-K`
+                  : `${results.qubo.metrics.cluster_coverage} clusters vs ${results.topk.metrics.cluster_coverage} for Top-K`
+                } •{' '}
+                {Math.round((1 - results.qubo.metrics.intra_list_similarity / results.topk.metrics.intra_list_similarity) * 100)}% more diverse
               </p>
             </div>
           </div>

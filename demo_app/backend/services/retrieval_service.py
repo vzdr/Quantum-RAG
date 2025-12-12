@@ -22,6 +22,8 @@ from core.generation import ResponseGenerator
 from core.utils import (
     compute_intra_list_similarity,
     compute_cluster_coverage_from_filenames,
+    compute_aspect_recall,
+    filter_chunks_by_prompt,
 )
 from core.data_models import Chunk
 
@@ -210,7 +212,7 @@ class RetrievalService:
 
         latency_ms = (time.perf_counter() - start_time) * 1000
 
-        # Convert results to schema format
+        # Convert results to schema format (include aspect metadata for Wikipedia)
         retrieval_results = [
             RetrievalResult(
                 rank=r.rank,
@@ -218,6 +220,8 @@ class RetrievalService:
                 text=r.chunk.text,
                 source=r.chunk.source,
                 chunk_id=r.chunk.id,
+                aspect_id=r.chunk.metadata.get('aspect_id'),
+                aspect_name=r.chunk.metadata.get('aspect_name'),
             )
             for r in results
         ]
@@ -251,12 +255,31 @@ class RetrievalService:
         # Calculate average relevance
         avg_relevance = np.mean([r.score for r in results]) if results else 0.0
 
+        # Compute aspect recall for Wikipedia dataset
+        aspect_recall_pct = None
+        aspects_found = None
+        total_aspects = 5  # Default for Wikipedia dataset
+
+        if dataset == 'wikipedia':
+            # Count unique aspects in retrieved results
+            unique_aspects = set()
+            for r in results:
+                aspect_name = r.chunk.metadata.get('aspect_name')
+                if aspect_name and aspect_name != 'general':
+                    unique_aspects.add(aspect_name)
+
+            aspects_found = len(unique_aspects)
+            aspect_recall_pct = (aspects_found / total_aspects) * 100.0 if total_aspects > 0 else 0.0
+
         metrics = RetrievalMetrics(
             latency_ms=latency_ms,
             intra_list_similarity=ils,
             cluster_coverage=cluster_info['coverage_count'],
             total_clusters=total_clusters,
             avg_relevance=float(avg_relevance),
+            aspect_recall=aspect_recall_pct,
+            aspects_found=aspects_found,
+            total_aspects=total_aspects,
         )
 
         return method, MethodResult(
