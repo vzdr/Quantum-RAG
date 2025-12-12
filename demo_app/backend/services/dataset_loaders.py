@@ -97,9 +97,11 @@ def convert_wikipedia_to_chroma_format(
         if chunk_id not in embeddings:
             continue
 
-        # Extract aspect name for cluster labeling
+        # Extract metadata for cluster labeling
         aspect_name = chunk.get('aspect_name', 'general')
+        aspect_id = chunk.get('aspect_id', -1)
         article_title = chunk.get('article_title', 'wikipedia')
+        prompt_id = chunk.get('prompt_id', 'unknown')
 
         # Create source identifier (used for cluster counting)
         # Format: article_aspect (e.g., "Lupus_symptoms", "Diabetes_treatment")
@@ -112,8 +114,10 @@ def convert_wikipedia_to_chroma_format(
             'metadata': {
                 'source': source_name,
                 'aspect_name': aspect_name,
+                'aspect_id': aspect_id,
                 'article_title': article_title,
                 'chunk_type': chunk_type,
+                'prompt_id': prompt_id,
                 'chunk_index': 0,  # Not used in Wikipedia format
                 'start_char': 0,
                 'end_char': len(chunk['text'])

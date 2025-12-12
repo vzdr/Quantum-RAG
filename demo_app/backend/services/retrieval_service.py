@@ -262,15 +262,29 @@ class RetrievalService:
         total_aspects = 5  # Default for Wikipedia dataset
 
         if dataset == 'wikipedia':
-            # Count unique aspects in retrieved results
-            unique_aspects = set()
+            # Find the most common article in results
+            article_counts = {}
             for r in results:
-                aspect_name = r.chunk.metadata.get('aspect_name')
-                if aspect_name and aspect_name != 'general':
-                    unique_aspects.add(aspect_name)
+                article = r.chunk.metadata.get('article_title')
+                if article:
+                    article_counts[article] = article_counts.get(article, 0) + 1
 
-            aspects_found = len(unique_aspects)
-            aspect_recall_pct = (aspects_found / total_aspects) * 100.0 if total_aspects > 0 else 0.0
+            # If we have results, compute aspect recall for the most common article
+            if article_counts:
+                main_article = max(article_counts, key=article_counts.get)
+
+                # Count unique aspects for this article only
+                unique_aspects = set()
+                for r in results:
+                    if r.chunk.metadata.get('article_title') == main_article:
+                        aspect_name = r.chunk.metadata.get('aspect_name')
+                        chunk_type = r.chunk.metadata.get('chunk_type', '')
+                        # Count gold aspects (not noise)
+                        if aspect_name and aspect_name not in ['general', 'prompt'] and chunk_type in ['gold_base', 'gold_redundant']:
+                            unique_aspects.add(aspect_name)
+
+                aspects_found = len(unique_aspects)
+                aspect_recall_pct = (aspects_found / total_aspects) * 100.0 if total_aspects > 0 else 0.0
 
         metrics = RetrievalMetrics(
             latency_ms=latency_ms,
