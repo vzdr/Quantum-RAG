@@ -288,49 +288,53 @@ SOLVER_PRESETS = {
 
 
 class QUBORetrievalStrategy(AbstractRetrievalStrategy):
-    """QUBO-based diverse retrieval with ORBIT solver."""
+    """QUBO-based diverse retrieval using a selectable backend solver."""
 
     def __init__(
         self,
-        alpha: float = 0.6,
-        penalty_multiplier: float = 2.0,
-        solver_params: Optional[Dict[str, Any]] = None,
+        alpha: float = 0.05,
+        penalty: float = 1000.0,
+        solver: str = 'orbit',
+        solver_options: Optional[Dict[str, Any]] = None,
         solver_preset: str = 'balanced'
     ):
         """
         Initialize QUBO strategy.
 
         Args:
-            alpha: Relevance weight (0.5-0.7), (1-alpha) = diversity weight
-            penalty_multiplier: Cardinality constraint penalty multiplier (default: 2.0)
-            solver_params: ORBIT solver parameters (overrides preset if provided)
-            solver_preset: Preset configuration ('fast', 'balanced', 'quality', 'maximum')
+            alpha: Diversity weight (default: 0.05). Controls penalty for similar documents.
+            penalty: Cardinality constraint penalty (default: 1000.0). Enforces exactly K selections.
+            solver: Backend solver ('orbit', 'gurobi', 'bruteforce').
+            solver_options: Solver-specific parameters (overrides preset if provided).
+            solver_preset: For 'orbit' solver, preset configuration ('fast', 'balanced', 'quality').
         """
         self.alpha = alpha
-        self.penalty_multiplier = penalty_multiplier
+        self.penalty = penalty
+        self.solver = solver
+        self.solver_preset = solver_preset
 
-        # Use preset if solver_params not provided
-        if solver_params is None:
-            if solver_preset not in SOLVER_PRESETS:
-                raise ValueError(
-                    f"Unknown solver_preset '{solver_preset}'. "
-                    f"Choose from: {list(SOLVER_PRESETS.keys())}"
-                )
-            self.solver_params = SOLVER_PRESETS[solver_preset].copy()
-            self.solver_preset = solver_preset
-        else:
-            self.solver_params = solver_params
+        # Process solver options and presets
+        if solver_options is not None:
+            self.solver_options = solver_options
             self.solver_preset = 'custom'
+        elif self.solver == 'orbit':
+            # Store preset name, will be used in solve_diverse_retrieval_qubo
+            self.solver_options = {'preset': solver_preset}
+        else:
+            # For non-orbit solvers, default to empty options if none provided
+            self.solver_options = {}
+
 
     def get_name(self) -> str:
-        return "qubo"
+        return f"qubo_{self.solver}"
 
     def get_parameters(self) -> Dict[str, Any]:
         return {
             'alpha': self.alpha,
-            'penalty_multiplier': self.penalty_multiplier,
+            'penalty': self.penalty,
+            'solver': self.solver,
             'solver_preset': self.solver_preset,
-            **self.solver_params
+            **self.solver_options
         }
 
     def retrieve(
@@ -343,8 +347,7 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
         """
         QUBO-based diverse retrieval.
 
-        Uses ORBIT to solve:
-        minimize: -α * Σᵢ sim(q, cᵢ) * xᵢ + (1-α) * Σᵢⱼ sim(cᵢ, cⱼ) * xᵢ * xⱼ
+        minimize: -Σᵢ sim(q, cᵢ) * xᵢ + α * Σᵢⱼ sim(cᵢ, cⱼ) * xᵢ * xⱼ + P * (Σxᵢ - k)²
         subject to: Σxᵢ = k
         """
         from .qubo_solver import solve_diverse_retrieval_qubo
@@ -363,8 +366,9 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
             candidate_embeddings=candidate_embeddings,
             k=k,
             alpha=self.alpha,
-            penalty_multiplier=self.penalty_multiplier,
-            solver_params=self.solver_params
+            penalty=self.penalty,
+            solver=self.solver,
+            solver_options=self.solver_options
         )
 
         # Convert to results
@@ -372,7 +376,6 @@ class QUBORetrievalStrategy(AbstractRetrievalStrategy):
 
         metadata = {
             'method': 'qubo',
-            'alpha': self.alpha,
             'candidates_considered': len(candidates),
             **solver_metadata
         }

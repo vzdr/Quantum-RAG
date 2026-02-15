@@ -13,8 +13,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
+!demo_app/frontend/src/lib/
 parts/
 sdist/
 var/
@@ -25,9 +26,6 @@ wheels/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
-
-# Vector database
-chroma_db/
 
 # IDE
 .idea/
@@ -42,5 +40,11 @@ Thumbs.db
 
 # Virtual environments
 venv/
-env/
+.env/
 .venv/
+
+# Large data files
+data/
+
+# Claude
+.claude/

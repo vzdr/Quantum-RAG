@@ -1,0 +1,1 @@
+export { EmbeddingSpace } from './EmbeddingSpace';

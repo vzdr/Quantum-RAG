@@ -1,0 +1,10 @@
+{
+  "correlation": -0.7610009678392128,
+  "p_value": 0.0,
+  "n_data_points": 1425060,
+  "n_prompts": 10,
+  "alpha": 0.05,
+  "k": 5,
+  "redundancy_level": 0,
+  "success": true
+}

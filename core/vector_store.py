@@ -30,7 +30,7 @@ class VectorStore:
     def __init__(
         self,
         collection_name: str = "rag_collection",
-        persist_directory: str = "./chroma_db",
+        persist_directory: str = "./data/vector_dbs",
         reset: bool = False
     ):
         """
@@ -113,6 +113,65 @@ class VectorStore:
 
                 # Store reference
                 self._chunks_map[chunk_id] = ec.chunk
+
+            # Add batch to ChromaDB
+            self.collection.add(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=metadatas
+            )
+
+            total_added += len(ids)
+
+        return total_added
+
+    def add_with_embeddings(self, chunks_with_embeddings: List[Dict[str, Any]], batch_size: int = 500) -> int:
+        """
+        Add chunks that already have embeddings computed.
+        Used for datasets with pre-computed embeddings (e.g., Wikipedia JSONL+NPZ).
+
+        Args:
+            chunks_with_embeddings: List of dicts with:
+                - id: chunk ID (str)
+                - text: chunk text (str)
+                - embedding: numpy array or list (will be converted to list)
+                - metadata: metadata dict
+            batch_size: Number of chunks to add per batch (default 500)
+
+        Returns:
+            Number of chunks added
+        """
+        if not chunks_with_embeddings:
+            return 0
+
+        total_added = 0
+
+        # Process in batches to avoid ChromaDB limits
+        for i in range(0, len(chunks_with_embeddings), batch_size):
+            batch = chunks_with_embeddings[i:i + batch_size]
+
+            ids = []
+            embeddings = []
+            documents = []
+            metadatas = []
+
+            for chunk_dict in batch:
+                chunk_id = chunk_dict['id']
+                text = chunk_dict['text']
+                embedding = chunk_dict['embedding']
+                metadata = chunk_dict['metadata']
+
+                ids.append(chunk_id)
+                # Convert numpy array to list if needed
+                if isinstance(embedding, np.ndarray):
+                    embeddings.append(embedding.tolist())
+                else:
+                    embeddings.append(embedding)
+                documents.append(text)
+                # Ensure all metadata values are strings for ChromaDB
+                metadatas.append({k: str(v) if not isinstance(v, (int, float, bool)) else v
+                                  for k, v in metadata.items()})
 
             # Add batch to ChromaDB
             self.collection.add(
@@ -314,3 +373,81 @@ class VectorStore:
                 results['metadatas']
             )
         ]
+
+    def get_by_metadata(self, where: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Get all chunks matching metadata criteria.
+
+        Args:
+            where: ChromaDB where filter dictionary
+
+        Returns:
+            List of chunk data with id, text, metadata
+        """
+        results = self.collection.get(
+            where=where,
+            include=["documents", "metadatas", "embeddings"]
+        )
+
+        return [
+            {
+                'id': id_,
+                'text': doc,
+                'metadata': meta,
+                'embedding': emb
+            }
+            for id_, doc, meta, emb in zip(
+                results['ids'],
+                results['documents'],
+                results['metadatas'],
+                results.get('embeddings', [None] * len(results['ids']))
+            )
+        ]
+
+    def search_with_filters(
+        self,
+        query_embedding: np.ndarray,
+        k: int = 5,
+        metadata_filter: Optional[Dict] = None,
+        exclude_metadata: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Advanced search with inclusion and exclusion filters.
+
+        Args:
+            query_embedding: Query embedding vector
+            k: Number of results to return
+            metadata_filter: Metadata criteria to include (AND)
+            exclude_metadata: Metadata criteria to exclude (NOT)
+
+        Returns:
+            List of search results
+
+        Example:
+            # Get top-5 from aspect_id 0-2, excluding noise
+            results = store.search_with_filters(
+                query_emb,
+                k=5,
+                metadata_filter={"aspect_id": {"$lte": "2"}},
+                exclude_metadata={"chunk_type": "noise"}
+            )
+        """
+        where_clause = {}
+
+        if metadata_filter and exclude_metadata:
+            where_clause = {
+                "$and": [
+                    metadata_filter,
+                    {"$not": exclude_metadata}
+                ]
+            }
+        elif metadata_filter:
+            where_clause = metadata_filter
+        elif exclude_metadata:
+            where_clause = {"$not": exclude_metadata}
+
+        return self.search(
+            query_embedding=query_embedding,
+            k=k,
+            where=where_clause if where_clause else None
+        )
